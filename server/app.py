@@ -1,6 +1,7 @@
 """FastAPI server: phone and dashboard WebSockets around a continuously running brain.
 
 Run: python -m server            (or: uvicorn server.app:app --host 0.0.0.0 --port 8000)
+Pages: /dashboard/ (QR code for the phone) and /phone/ (the controller), see server/web.py.
 Brain mode: FLY_BRAIN=reduced (default) or FLY_BRAIN=full.
 Message format: reports/MESSAGE_FORMAT.md.
 """
@@ -20,6 +21,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 
 from server.brain_runner import BrainRunner, EventError, load_runner
 from server.config import SERVER, ServerConfig
+from server.web import add_web_routes
 
 log = logging.getLogger("fly.server")
 
@@ -187,6 +189,7 @@ def create_app(cfg: ServerConfig = SERVER,
     async def ws_dashboard(ws: WebSocket) -> None:
         await serve(ws, "dashboard")
 
+    add_web_routes(app, cfg)
     return app
 
 

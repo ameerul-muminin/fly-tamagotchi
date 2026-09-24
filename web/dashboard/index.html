@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fly Dashboard</title>
+  <!-- Phase 3 placeholder: QR code for the phone and a live input check.
+       The full dashboard (fly, mood bars, 3D brain, charts) is Phase 4. -->
+  <style>
+    :root { --bg: #16130f; --panel: #221d17; --line: #3a3128; --text: #f4ecdf; --sub: #b3a590;
+            --sugar: #f2b134; --bitter: #7bc96f; --mn9: #e5634d; color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text);
+           font: 16px/1.4 -apple-system, "Segoe UI", system-ui, sans-serif; }
+    main { max-width: 900px; margin: 0 auto; padding: 32px 16px; display: grid; gap: 24px;
+           grid-template-columns: minmax(0, 320px) minmax(0, 1fr); }
+    @media (max-width: 700px) { main { grid-template-columns: minmax(0, 1fr); } }
+    h1 { grid-column: 1 / -1; margin: 0; font-size: 26px; }
+    h1 small { font-size: 14px; color: var(--sub); font-weight: 400; margin-left: 8px; }
+    .card { background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 18px; }
+    .qr { background: #fff; border-radius: 12px; padding: 8px; display: block; width: 100%; aspect-ratio: 1; }
+    .url { font-family: ui-monospace, Consolas, monospace; font-size: 13px; word-break: break-all; margin: 12px 0 4px; }
+    .sub { color: var(--sub); font-size: 13px; margin: 4px 0; }
+    .warn { color: #f0a38f; }
+    table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+    td, th { padding: 7px 4px; text-align: left; border-bottom: 1px solid var(--line); }
+    th { color: var(--sub); font-weight: 500; font-size: 13px; }
+    td.num { text-align: right; }
+    .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; }
+    .eat { font-size: 22px; font-weight: 700; margin: 0 0 8px; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Fly Tamagotchi <small>connect a phone</small></h1>
+  <section class="card">
+    <img class="qr" id="qr" alt="QR code with the phone page address">
+    <div class="url" id="url">…</div>
+    <p class="sub" id="source"></p>
+    <p class="sub warn" id="note" hidden></p>
+  </section>
+  <section class="card">
+    <p class="eat" id="eat">Brain: connecting…</p>
+    <table>
+      <thead><tr><th>group</th><th class="num">input Hz</th><th class="num">firing Hz</th></tr></thead>
+      <tbody>
+        <tr><td><span class="dot" style="background:var(--sugar)"></span>sugar GRNs</td><td class="num" id="in-sugar">0</td><td class="num" id="r-sugar_grn">0</td></tr>
+        <tr><td><span class="dot" style="background:var(--bitter)"></span>bitter GRNs</td><td class="num" id="in-bitter">0</td><td class="num" id="r-bitter_grn">0</td></tr>
+        <tr><td><span class="dot" style="background:var(--mn9)"></span>MN9 (feeding)</td><td class="num">brain</td><td class="num" id="r-mn9_primary">0</td></tr>
+      </tbody>
+    </table>
+    <p class="sub" id="meta"></p>
+    <p class="sub">Phone connected: <b id="phones">?</b> · light from phone: <b id="light">?</b> (game only)</p>
+    <p class="sub">The full dashboard (fly, mood, 3D brain) comes in Phase 4.</p>
+  </section>
+</main>
+<script>
+  const $ = (id) => document.getElementById(id);
+  const sourceText = { config: "from FLY_PUBLIC_URL / --public-url", ngrok: "ngrok tunnel (HTTPS)",
+                       lan: "this laptop's Wi-Fi address; the phone must be on the same network" };
+
+  async function refreshUrl() {
+    try {
+      const info = await (await fetch("/api/phone-url", { cache: "no-store" })).json();
+      $("url").textContent = info.url;
+      $("source").textContent = `Source: ${sourceText[info.source] ?? info.source}`;
+      $("note").hidden = !info.note;
+      $("note").textContent = info.note ?? "";
+      const src = `/api/qr.svg?u=${encodeURIComponent(info.url)}`;
+      if ($("qr").getAttribute("src") !== src) $("qr").src = src;
+    } catch { /* server restarting; the next refresh retries */ }
+    try {
+      const h = await (await fetch("/health", { cache: "no-store" })).json();
+      $("phones").textContent = h.clients.phone;
+    } catch { /* ignore */ }
+  }
+
+  function connect() {
+    const ws = new WebSocket(`${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/ws/dashboard`);
+    ws.onmessage = (e) => {
+      const m = JSON.parse(e.data);
+      if (m.type !== "tick") return;
+      for (const g of ["sugar_grn", "bitter_grn", "mn9_primary"])
+        $(`r-${g}`).textContent = (m.group_rates_hz[g] ?? 0).toFixed(0);
+      $("in-sugar").textContent = m.inputs_hz.sugar.toFixed(0);
+      $("in-bitter").textContent = m.inputs_hz.bitter.toFixed(0);
+      $("eat").textContent = m.game.eating
+        ? `Eating (MN9 ${m.game.mn9_rate_hz.toFixed(0)} Hz)` : `Not eating (MN9 ${m.game.mn9_rate_hz.toFixed(0)} Hz)`;
+      $("light").textContent = m.game.light.toFixed(2);
+      $("meta").textContent = `t = ${(m.t_ms / 1000).toFixed(1)} s · ${m.n_spiking} neurons spiking · compute ${m.perf.compute_ms.toFixed(1)} ms / 50 ms`;
+    };
+    ws.onclose = () => { $("eat").textContent = "Brain: disconnected, retrying…"; setTimeout(connect, 1000); };
+  }
+
+  refreshUrl();
+  setInterval(refreshUrl, 5000);
+  connect();
+</script>
+</body>
+</html>

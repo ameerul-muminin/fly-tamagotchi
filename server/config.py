@@ -1,4 +1,4 @@
-"""All tunable server values (Phase 2). Brain/model values live in brain/config.py.
+"""All tunable server values (Phase 2; phone page values added in Phase 3). Brain/model values live in brain/config.py.
 
 Game values here are project choices, not values from the paper.
 """
@@ -9,6 +9,46 @@ import os
 from dataclasses import dataclass, field
 
 from brain.config import CHUNK_MS, DEFAULT_INPUT_RATE_HZ, NoiseParams
+
+
+@dataclass(frozen=True)
+class PhoneConfig:
+    """Phone controller page settings (Phase 3), served to the page by /api/phone-config.
+
+    Project choices made before testing on a device, not measured values. Shake and
+    camera values will need tuning on a real iPhone (PLAN.md Phase 6, item 4).
+    """
+
+    # --- tap -> sugar ---
+    # Duration sent with each tap; None = let the server use default_stimulus_ms.
+    tap_duration_ms: float | None = None
+
+    # --- shake -> bitter (DeviceMotion) ---
+    # Peak detector on |acceleration| with gravity removed, in m/s^2.
+    shake_threshold_ms2: float = 15.0
+    shake_min_peaks: int = 3             # peaks needed inside the window
+    shake_window_ms: float = 800.0
+    shake_cooldown_ms: float = 1500.0    # no second shake event this soon after one
+    # Only accelerationIncludingGravity available: gravity is estimated with a
+    # low-pass filter with this smoothing factor (per sample) and subtracted.
+    gravity_lowpass_alpha: float = 0.1
+    bitter_duration_ms: float | None = None  # None = server default
+
+    # --- camera -> light (game-only on the server) ---
+    camera_facing: str = "user"          # "user" (front) or "environment" (back)
+    camera_sample_hz: float = 4.0        # brightness checks per second
+    camera_width: int = 32               # frame is downscaled to this size before averaging
+    camera_height: int = 24
+    light_min_change: float = 0.05       # send when the level moves at least this much...
+    light_max_interval_ms: float = 2000.0  # ...or at least this often
+    dark_below: float = 0.15             # the page labels levels below this "dark"
+
+    # --- feedback ---
+    vibrate_pattern_ms: tuple[int, ...] = (80, 60, 80)  # on each eating onset
+
+    # --- connection ---
+    reconnect_min_ms: float = 500.0
+    reconnect_max_ms: float = 8000.0
 
 
 @dataclass(frozen=True)
@@ -55,6 +95,17 @@ class ServerConfig:
     # --- network ---
     host: str = "0.0.0.0"
     port: int = 8000
+    # HTTPS (Safari needs it for motion and camera). PEM files, e.g. from mkcert.
+    certfile: str | None = None
+    keyfile: str | None = None
+    # URL the dashboard QR code points to. Env var FLY_PUBLIC_URL overrides. When unset:
+    # a running ngrok tunnel, else this machine's LAN address (see server/web.py).
+    public_url: str | None = field(default_factory=lambda: os.environ.get("FLY_PUBLIC_URL"))
+    ngrok_api: str = "http://127.0.0.1:4040/api/tunnels"  # ngrok's local inspection API
+    ngrok_timeout_s: float = 0.3
+
+    # --- phone page (Phase 3) ---
+    phone: PhoneConfig = PhoneConfig()
 
 
 SERVER = ServerConfig()
