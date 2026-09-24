@@ -39,6 +39,19 @@
       <p id="mood-note" class="muted small"></p>
     </section>
 
+    <section class="panel phone-panel" id="phone-panel" hidden>
+      <h2>Connect a phone</h2>
+      <div class="phone-link">
+        <img class="qr" id="qr" src="/api/qr.svg" alt="QR code with the phone page address">
+        <div>
+          <div class="mono small url" id="phone-url">…</div>
+          <p class="muted small" id="phone-source"></p>
+          <p class="small warn" id="phone-note" hidden></p>
+          <p class="small">Phones connected: <b id="phone-count">?</b></p>
+        </div>
+      </div>
+    </section>
+
     <section class="panel brain-panel">
       <h2>Brain activity <span class="tag brain">brain</span></h2>
       <div id="brain3d"><p id="brain-msg" class="overlay muted">Loading neuron positions…</p></div>
@@ -58,5 +71,6 @@
   <footer id="stats" class="mono small"></footer>
 
   <script type="module" src="main.js"></script>
+  <script type="module" src="phone_link.js"></script>
 </body>
 </html>

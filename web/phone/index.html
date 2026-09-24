@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#16130f">
+  <title>Fly Controller</title>
+  <link rel="stylesheet" href="phone.css">
+</head>
+<body>
+  <header class="bar">
+    <span class="brand">Fly <b>Tamagotchi</b></span>
+    <span id="conn" class="conn" data-state="connecting"><i></i><span id="conn-text">connecting</span></span>
+  </header>
+
+  <section class="fly-state" aria-live="polite">
+    <div id="fly-face" class="face" data-mood="idle" aria-hidden="true">
+      <span class="eye"></span><span class="eye"></span><span class="mouth"></span>
+    </div>
+    <div>
+      <div id="fly-line" class="fly-line">Waiting for the brain…</div>
+      <div class="fly-sub"><span id="mn9">MN9 0 Hz</span> · <span id="stims">no taste</span></div>
+    </div>
+  </section>
+
+  <section class="moods" aria-label="Mood">
+    <div class="mood"><label>Hunger</label><div class="meter"><div id="m-hunger" class="fill hunger"></div></div></div>
+    <div class="mood"><label>Happiness</label><div class="meter"><div id="m-happiness" class="fill happiness"></div></div></div>
+    <div class="mood"><label>Energy</label><div class="meter"><div id="m-energy" class="fill energy"></div></div></div>
+    <p id="mood-note" class="note" hidden>Mood is a placeholder until the game rules (Phase 5).</p>
+  </section>
+
+  <button id="tap" class="tap" type="button" aria-label="Give sugar">
+    <span class="drop" aria-hidden="true"></span>
+    <span class="tap-title">Tap for sugar</span>
+    <span class="tap-sub">each tap = a few seconds of sugar taste</span>
+  </button>
+
+  <section class="sensors">
+    <div class="sensor" id="shake-card">
+      <div class="s-title">Shake</div>
+      <div class="s-value" id="shake-state">off</div>
+      <div class="s-sub">bitter</div>
+    </div>
+    <div class="sensor" id="light-card">
+      <div class="s-title">Light</div>
+      <div class="s-value"><span id="light-value">off</span></div>
+      <div class="lightbar"><div id="light-fill"></div></div>
+      <video id="cam" playsinline muted autoplay aria-hidden="true"></video>
+    </div>
+  </section>
+
+  <button id="enable" class="enable" type="button">Enable shake + camera</button>
+  <p id="secure-note" class="note warn" hidden>
+    This page is not on HTTPS. Tapping works, but iPhone Safari only allows shake and
+    camera on HTTPS pages. Scan the QR code from an ngrok or certificate setup.
+  </p>
+  <p id="sensor-note" class="note" hidden></p>
+
+  <!-- iOS 18+ plays a haptic tick when a switch toggles; used where navigator.vibrate is missing. -->
+  <label id="haptic" class="haptic" aria-hidden="true"><input type="checkbox" switch tabindex="-1"></label>
+
+  <script type="module" src="phone.js"></script>
+</body>
+</html>

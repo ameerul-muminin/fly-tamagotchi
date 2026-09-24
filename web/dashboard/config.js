@@ -50,4 +50,5 @@ export const CONFIG = {
   reconnectMs: 1500,
   wsPath: "/ws/dashboard",
   positionsPath: "/api/positions",
+  phoneLinkRefreshMs: 5000,   // how often the phone QR panel re-checks the phone URL
 };

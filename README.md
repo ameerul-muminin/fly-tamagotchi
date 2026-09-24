@@ -27,6 +27,33 @@ python -m server.fake_phone --spawn   # starts a server, sends fake phone events
 WebSockets: `/ws/phone` and `/ws/dashboard`. Every message is documented in
 `reports/MESSAGE_FORMAT.md`, and every server setting is in `server/config.py`.
 
+## Connect an iPhone (Phase 3)
+
+Open `http://localhost:8000/` on the laptop. The dashboard's "Connect a phone" panel shows a
+QR code for the phone page (`/phone/`). Tap = sugar, shake = bitter, cover the camera = dark.
+
+iOS Safari only allows shake and camera on **HTTPS** pages. Tapping works over plain HTTP.
+Pick one of these:
+
+```bash
+# A: ngrok (easiest). The dashboard QR code picks up the tunnel automatically.
+python -m server
+ngrok http 8000
+
+# B: mkcert certificate for the laptop's LAN IP (install mkcert's root CA on the iPhone
+#    and trust it under Settings > General > About > Certificate Trust Settings)
+mkcert -install && mkcert 192.168.0.176      # use your laptop's IP
+python -m server --certfile 192.168.0.176.pem --keyfile 192.168.0.176-key.pem
+```
+
+On the phone, tap **Enable shake + camera** once. iOS asks for motion and camera
+permission. Phone tunables (shake threshold, camera rate, vibration…) are in
+`PhoneConfig` in `server/config.py`.
+
+Checks without a phone: `python -m server.phone_page_check --spawn` runs the real phone
+logic (`web/phone/controller.js`) in Node with a mock tap, mock shake and mock camera
+frames against the reduced brain. It needs Node.js 22+, which `pytest -q` also needs.
+
 ## Dashboard (Phase 4)
 
 Start the server, then open <http://localhost:8000/dashboard/> on the laptop.
