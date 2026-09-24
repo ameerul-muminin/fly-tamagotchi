@@ -126,6 +126,19 @@ DEFAULT_INPUT_RATE_HZ = 150.0
 # The live simulator advances in chunks of this length.
 CHUNK_MS = 50.0
 
+
+@dataclass(frozen=True)
+class NoiseParams:
+    """Optional background noise for live play. NOT part of the reference model.
+
+    Every neuron receives independent Poisson noise events at `rate_hz`; each event
+    adds `jump_mv` to v, like a Poisson input, and is discarded while the neuron
+    is refractory. Validation runs use no noise.
+    """
+
+    rate_hz: float
+    jump_mv: float
+
 # ---------------------------------------------------------------------------
 # Phase 1 validation
 # ---------------------------------------------------------------------------
@@ -164,3 +177,49 @@ class ValidationConfig:
 
 
 VALIDATION = ValidationConfig()
+
+
+# ---------------------------------------------------------------------------
+# Phase 2: reduced circuit for real-time play
+# ---------------------------------------------------------------------------
+REDUCED_CIRCUIT_PATH = DATA_DIR / "reduced_circuit.json"
+PHASE2_RESULTS_PATH = DATA_DIR / "phase2_validation.json"
+
+
+@dataclass(frozen=True)
+class ReducedCircuitConfig:
+    """Which neurons the reduced circuit keeps (see reports/PHASE_2_PLAN.md).
+
+    A neuron is kept if it lies on a path of at most `max_path_hops` connections
+    from any `source_groups` neuron to any `target_groups` neuron, counting every
+    connection (no synapse threshold). `always_include` groups are kept regardless.
+    K = 5 was chosen on design seed 100, which is not a validation seed.
+    """
+
+    max_path_hops: int = 5
+    source_groups: tuple[str, ...] = ("sugar_grn", "bitter_grn")
+    target_groups: tuple[str, ...] = ("mn9",)
+    always_include: tuple[str, ...] = ("sugar_grn", "bitter_grn", "mn9", "mn9_primary")
+
+
+REDUCED = ReducedCircuitConfig()
+
+
+@dataclass(frozen=True)
+class Phase2ValidationConfig:
+    """Pass/fail thresholds for the reduced circuit, fixed before the first
+    validation run (reports/PHASE_2_PLAN.md). Seeds, conditions and the Phase 1
+    thresholds come from VALIDATION."""
+
+    # Reduced MN9 mean must be within this fraction of the full-brain mean ...
+    max_rel_diff: float = 0.10
+    # ... for these conditions.
+    compared_conditions: tuple[str, ...] = ("sugar", "sugar+bitter")
+    # Every one of these shuffles of the reduced circuit must fail both effects.
+    shuffle_seeds: tuple[int, ...] = (12345, 12346, 12347, 12348, 12349)
+    # Wall time per 50 ms chunk, over all reduced real-brain chunks [ms].
+    max_mean_chunk_ms: float = 35.0
+    max_p95_chunk_ms: float = 35.0
+
+
+PHASE2 = Phase2ValidationConfig()

@@ -46,11 +46,21 @@ class ConditionResult:
         return float(np.std(self.mn9_rates_hz, ddof=1)) if len(self.mn9_rates_hz) > 1 else 0.0
 
 
-def group_indices(conn: Connectome) -> dict[str, np.ndarray]:
-    """Neuron groups from data/neuron_groups.json as matrix indices."""
+def group_indices(conn: Connectome, skip_missing: bool = False) -> dict[str, np.ndarray]:
+    """Neuron groups from data/neuron_groups.json as matrix indices.
+
+    With `skip_missing`, IDs not in `conn` (e.g. photoreceptors in the reduced
+    circuit) are dropped, and groups left empty are omitted.
+    """
     index = conn.index_of()
-    return {name: np.array([index[i] for i in ids], dtype=np.int64)
-            for name, ids in load_groups().items()}
+    out: dict[str, np.ndarray] = {}
+    for name, ids in load_groups().items():
+        if skip_missing:
+            ids = [i for i in ids if i in index]
+            if not ids:
+                continue
+        out[name] = np.array([index[i] for i in ids], dtype=np.int64)
+    return out
 
 
 def run_trial(
