@@ -27,6 +27,21 @@ python -m server.fake_phone --spawn   # starts a server, sends fake phone events
 WebSockets: `/ws/phone` and `/ws/dashboard`. Every message is documented in
 `reports/MESSAGE_FORMAT.md`, and every server setting is in `server/config.py`.
 
+## Dashboard (Phase 4)
+
+Start the server, then open <http://localhost:8000/dashboard/> on the laptop.
+
+- **Replay** a recorded session instead of the live brain:
+  <http://localhost:8000/dashboard/?replay=samples/session.jsonl> (add `&speed=4`, `&loop=1`).
+- **Record** a new sample (real reduced-brain output): `python -m server.record_session --spawn`
+- **Validate** in headless Chrome (replay + live): `python -m server.validate_dashboard`
+- **JS tests**: `node --test web/dashboard/tests/state.test.mjs` (also run by `pytest`; needs Node.js)
+
+three.js loads from `cdn.jsdelivr.net` (pinned to 0.170.0), so the 3D view needs internet access.
+Neuron positions come from the FlyWire annotation table (`pos_x/y/z`, 4×4×40 nm voxels) for
+v630 neurons whose root ID is unchanged in v783: 17,101 of the 19,698 reduced-brain neurons.
+Display settings are in `web/dashboard/config.js`.
+
 ## Data
 
 | What | Source | Version |

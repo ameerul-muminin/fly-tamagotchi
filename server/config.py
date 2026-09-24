@@ -58,3 +58,38 @@ class ServerConfig:
 
 
 SERVER = ServerConfig()
+
+
+# --- Phase 4: dashboard ---------------------------------------------------
+# Scripted session recorded by `python -m server.record_session` for the dashboard
+# replay and tests: (label, seconds, phone messages sent at the start).
+RECORD_SCRIPT: list[tuple[str, float, list[dict]]] = [
+    ("baseline", 1.5, []),
+    ("sugar", 3.0, [{"type": "sugar", "duration_ms": 3000}]),
+    ("pause", 1.5, []),
+    ("bitter", 2.5, [{"type": "bitter", "duration_ms": 2500}]),
+    ("pause", 1.5, []),
+    ("sugar+bitter", 3.0, [{"type": "sugar", "duration_ms": 3000},
+                           {"type": "bitter", "duration_ms": 3000}]),
+    ("pause", 1.0, []),
+    ("dark", 3.0, [{"type": "light", "level": 0.05}]),
+    ("light", 1.5, [{"type": "light", "level": 1.0}]),
+]
+
+
+@dataclass(frozen=True)
+class DashboardChecks:
+    """Pass/fail thresholds for `python -m server.validate_dashboard`, fixed before
+    the first validation run (reports/PHASE_4_PLAN.md)."""
+
+    live_seconds: float = 12.0               # live measurement length
+    min_tick_rate_frac: float = 0.9          # received ticks/s >= this x broadcast_hz
+    max_lost_frac: float = 0.02              # seq gaps / expected ticks
+    min_median_fps: float = 30.0             # render frames per second (headless Chrome)
+    max_p95_tick_age_ms: float = 150.0       # Date.now() - server_time_ms when drawn
+    max_js_errors: int = 0
+    replay_states: tuple[str, ...] = ("idle", "eating", "disgusted", "resting")
+    replay_speed: float = 4.0                # replay speed-up for the replay check
+
+
+DASHBOARD_CHECKS = DashboardChecks()

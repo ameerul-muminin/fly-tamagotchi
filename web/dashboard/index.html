@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fly Tamagotchi</title>
+  <link rel="stylesheet" href="style.css">
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <header>
+    <h1>Fly Tamagotchi</h1>
+    <span id="conn" class="pill">starting</span>
+    <span id="brain-info" class="muted"></span>
+    <span class="spacer"></span>
+    <span id="clock" class="mono"></span>
+    <button id="reset" type="button" title="Return every neuron to rest and restart simulated time">Reset brain</button>
+  </header>
+
+  <main>
+    <section class="panel fly-panel">
+      <h2>The fly <span class="tag brain" title="Eating is MN9 spikes; disgust is bitter-neuron spikes">brain</span></h2>
+      <div id="fly"></div>
+      <p id="fly-caption" class="caption">Waiting for the brain…</p>
+    </section>
+
+    <section class="panel mood-panel">
+      <h2>Mood <span class="tag game" title="Game rules, not the connectome">game</span></h2>
+      <div class="bar" data-key="hunger"><label>Hunger</label><div class="track"><div class="fill"></div></div><output></output></div>
+      <div class="bar" data-key="happiness"><label>Happiness</label><div class="track"><div class="fill"></div></div><output></output></div>
+      <div class="bar" data-key="energy"><label>Energy</label><div class="track"><div class="fill"></div></div><output></output></div>
+      <p id="mood-note" class="muted small"></p>
+    </section>
+
+    <section class="panel brain-panel">
+      <h2>Brain activity <span class="tag brain">brain</span></h2>
+      <div id="brain3d"><p id="brain-msg" class="overlay muted">Loading neuron positions…</p></div>
+      <ul class="legend" id="legend"></ul>
+      <p id="brain-note" class="muted small"></p>
+    </section>
+
+    <section class="panel chart-panel">
+      <h2>Firing rates <span class="tag brain">brain</span></h2>
+      <div class="chart-wrap">
+        <canvas id="chart" aria-label="Firing rate of sugar neurons, bitter neurons and MN9 over the last 10 seconds"></canvas>
+        <div id="chart-tip" class="tip" hidden></div>
+      </div>
+    </section>
+  </main>
+
+  <footer id="stats" class="mono small"></footer>
+
+  <script type="module" src="main.js"></script>
+</body>
+</html>
