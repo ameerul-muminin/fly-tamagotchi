@@ -89,7 +89,11 @@ function render(ctl) {
 }
 
 // ------------------------------------------------------------------ sensors
+let motionOn = false;
+
 function startMotion(ctl) {
+  if (motionOn) return; // "Try again" / "Restart camera" must not add a second listener
+  motionOn = true;
   window.addEventListener("devicemotion", (e) => {
     const fired = ctl.motion({ acc: e.acceleration, accG: e.accelerationIncludingGravity, t: now() });
     if (fired) {
@@ -113,12 +117,23 @@ async function startCamera(ctl) {
   });
   video.srcObject = stream;
   video.classList.add("on");
-  await video.play().catch(() => {});
+  // Don't wait for play(): its promise can stay pending (seen when the track ends), and
+  // the sampling loop below only reads frames once the video has data anyway.
+  video.play().catch(() => {});
+  const [track] = stream.getVideoTracks();
+  track?.addEventListener("ended", () => {
+    // iOS stops the camera when the page goes to the background.
+    clearInterval(timer);
+    video.classList.remove("on");
+    $("light-value").textContent = "stopped";
+    $("enable").disabled = false;
+    $("enable").textContent = "Restart camera";
+  });
   const canvas = document.createElement("canvas");
   canvas.width = c.camera_width;
   canvas.height = c.camera_height;
   const g = canvas.getContext("2d", { willReadFrequently: true });
-  setInterval(() => {
+  const timer = setInterval(() => {
     if (document.hidden || video.readyState < 2) return;
     g.drawImage(video, 0, 0, canvas.width, canvas.height);
     const level = ctl.frame(g.getImageData(0, 0, canvas.width, canvas.height).data);

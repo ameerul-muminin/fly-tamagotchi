@@ -222,3 +222,27 @@ The same fields as `tick.game`, plus `t_ms`.
 ```
 
 All values in this file come from `server/config.py`.
+
+---
+
+## Phase 3 additions (HTTP only; the WebSocket messages above are unchanged)
+
+| Path | Returns |
+|---|---|
+| `GET /` | Redirect to `/dashboard/` |
+| `GET /phone/` | The phone controller page (`web/phone/`) |
+| `GET /dashboard/` | Phase 3 dashboard: QR code and a live input check (`web/dashboard/`) |
+| `GET /api/phone-url` | `{"url": "https://…/phone/", "source": "config" \| "ngrok" \| "lan", "https": true, "note": null}` |
+| `GET /api/qr.svg` | QR code (SVG) of that URL |
+| `GET /api/phone-config` | `PhoneConfig` from `server/config.py` (shake, camera, light, vibration, reconnect values) |
+
+What the phone page sends:
+
+| Input | Message |
+|---|---|
+| Tap on the sugar zone (pointerdown) | `{"type": "sugar"}` (server default duration) |
+| Shake (≥ 3 peaks of ≥ 15 m/s² within 800 ms, 1.5 s cooldown) | `{"type": "bitter"}` |
+| Camera, 4 checks/s: mean brightness of a 32×24 frame | `{"type": "light", "level": 0.016}`, sent when the level changes by ≥ 0.05 or every 2 s |
+| Every 3 s | `{"type": "ping", "t": <performance.now()>}` |
+
+It vibrates when `status.eating` goes from `false` to `true`.
