@@ -46,3 +46,12 @@ def test_sugar_and_bitter_are_disjoint_and_mn9_primary_in_mn9():
     g = load_groups()
     assert not set(g["sugar_grn"]) & set(g["bitter_grn"])
     assert set(g["mn9_primary"]) <= set(g["mn9"])
+
+
+def test_photoreceptor_groups_are_marked_partial_and_unused():
+    doc = json.loads(NEURON_GROUPS_PATH.read_text(encoding="utf-8"))
+    for name, g in doc["groups"].items():
+        is_photo = name.startswith("photoreceptor_")
+        assert g["partial"] is is_photo, name
+        if is_photo:
+            assert "not used" in g["status"]

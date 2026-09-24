@@ -25,7 +25,7 @@ from brain.config import (
 )
 from brain.connectome import load_connectome, shuffle_connectome
 from brain.reduced import build_reduced_circuit, summary
-from brain.simulator import LIFSimulator, default_backend
+from brain.simulator import default_backend, warm_up
 from brain.validate import ConditionResult, group_indices, reduction_is_significant, run_condition
 
 CONDITIONS = ("sugar", "sugar+bitter", "bitter")
@@ -37,14 +37,6 @@ def _rates(cfg: ValidationConfig) -> dict[str, dict[str, float]]:
         "sugar+bitter": {"sugar": cfg.sugar_hz, "bitter": cfg.bitter_hz},
         "bitter": {"bitter": cfg.bitter_hz},
     }
-
-
-def _warm_up(params: LIFParams) -> None:
-    """Load/compile the numba kernel so compile time is not counted as speed."""
-    import scipy.sparse as sp
-    sim = LIFSimulator(sp.csr_matrix((2, 2)), params)
-    sim.set_input("x", np.array([0]), 100.0)
-    sim.run(1.0)
 
 
 def _chunk_stats(times_s: list[float]) -> dict[str, float]:
@@ -60,7 +52,7 @@ def _result_dict(r: ConditionResult) -> dict:
 def run_phase2(cfg: ValidationConfig = VALIDATION, p2: Phase2ValidationConfig = PHASE2,
                params: LIFParams = LIFParams()) -> dict:
     """Run every Phase 2 experiment and return a JSON-serialisable report."""
-    _warm_up(params)
+    warm_up(params)  # compile time must not count as speed
     full = load_connectome()
     rc = build_reduced_circuit(full)
     red = rc.connectome

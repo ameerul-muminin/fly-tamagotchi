@@ -11,9 +11,21 @@ python -m venv .venv
 pip install -r requirements.txt
 python -m brain.download_data     # ~130 MB into data/, checksums verified
 python -m brain.neuron_groups     # writes data/neuron_groups.json
-pytest -q                          # ~2.5 min; includes the full-brain validation
-python -m brain.validate           # prints the Phase 1 report, writes data/validation_results.json
+pytest -q                          # a few minutes; includes full-brain and reduced-circuit validation
+python -m brain.validate           # Phase 1 report (full brain), writes data/validation_results.json
+python -m brain.validate_reduced   # Phase 2 table: reduced vs full brain, shuffles, speed
 ```
+
+## Run the server (Phase 2)
+
+```bash
+python -m server                   # reduced brain (real time) on port 8000
+python -m server --brain full      # full brain (about 65 ms per 50 ms chunk, not real time)
+python -m server.fake_phone --spawn   # starts a server, sends fake phone events, prints spike counts
+```
+
+WebSockets: `/ws/phone` and `/ws/dashboard`. Every message is documented in
+`reports/MESSAGE_FORMAT.md`, and every server setting is in `server/config.py`.
 
 ## Data
 
@@ -49,9 +61,35 @@ All parameters come from the repo's `model.py` and are listed, with citations, i
 | Bitter 150 Hz | 0.0 ± 0.0 Hz | 0.0 ± 0.0 Hz |
 
 - Sanity check, sugar at 100 Hz: our MN9 rate is 68.4 ± 4.6 Hz, the repo's is 67.0 ± 6.7 Hz (30 trials).
-- Speed: about 112 ms of wall time per 50 ms simulated, about 2.2× slower than real time.
+- Speed (Phase 1, NumPy): about 112 ms of wall time per 50 ms simulated, about 2.2× slower than real time. Phase 2 fixes this (below).
+
+## Phase 2: reduced circuit (seeds 0–4, 1 s trials, 150 Hz inputs)
+
+The server runs a reduced circuit: every neuron on a path of at most 5 connections from a
+sugar or bitter GRN to an MN9. That is 19,698 neurons and 2,415,250 connections.
+The full brain is still available with `--brain full`.
+
+| Condition | Full brain | Reduced circuit | Shuffled reduced (5 shuffles) |
+|---|---|---|---|
+| Sugar | 85.8 ± 5.8 Hz | 84.2 ± 4.9 Hz (−1.9%) | 0.0 Hz |
+| Sugar + bitter | 9.6 ± 3.2 Hz | 9.6 ± 3.2 Hz (0.0%) | 0.0 Hz |
+| Bitter | 0.0 Hz | 0.0 Hz | 0.0 Hz |
+
+Speed with the numba kernel:
+
+| Brain | Mean per 50 ms chunk | 95th percentile |
+|---|---|---|
+| Reduced | 8.4 ms | 12.1 ms |
+| Full | 66.7 ms | 97.4 ms |
+
+The simulator has two backends that give identical spikes: NumPy, and numba (the default
+when installed).
 
 ## Known limitations
+
+- Background noise is implemented but **off by default**. Every noise level tested either
+  stayed invisible or eventually ignited a self-sustained runaway state, in the reduced
+  circuit and in the full brain. See `reports/PHASE_2_REPORT.md`.
 
 - Only about 21% of annotated R7/R8 photoreceptors have v630 IDs, mostly on the right
   side. Matching the rest would need the FlyWire CAVE API.

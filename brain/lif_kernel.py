@@ -12,14 +12,14 @@ import numpy as np
 from numba import njit
 
 
-@njit(cache=True)
+@njit(cache=True, nogil=True)
 def _grow(a: np.ndarray) -> np.ndarray:
     out = np.empty(a.size * 2, dtype=a.dtype)
     out[:a.size] = a
     return out
 
 
-@njit(cache=True)
+@njit(cache=True, nogil=True)  # nogil: the server runs chunks in a worker thread
 def run_chunk(
     v, g, last_spike, has_rfc, slot_buf, slot_len, step0, n_steps,
     indptr, indices, data,

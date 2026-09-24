@@ -41,6 +41,13 @@ BACKENDS = ("auto", "numpy", "numba")
 _NEVER = np.iinfo(np.int64).min // 2  # "last spike step" of a neuron that never spiked
 
 
+def warm_up(params: LIFParams | None = None) -> None:
+    """Load (or compile) the numba kernel now, so the first real chunk is not slow."""
+    sim = LIFSimulator(sp.csr_matrix((2, 2)), params or LIFParams())
+    sim.set_input("x", np.array([0]), 100.0)
+    sim.run(1.0)
+
+
 def default_backend() -> str:
     """Backend that "auto" resolves to: numba if installed, else numpy."""
     return "numpy" if _numba_run_chunk is None else "numba"

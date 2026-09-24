@@ -147,6 +147,10 @@ def resolve_photoreceptors(v630_ids: set[int]) -> dict[str, dict]:
                          f"(v783) {ctype} have unchanged root IDs in v630. "
                          f"By side: {by_side}. Candidate light input only."),
             },
+            # Phase 2 decision: light is a game-only input for now; this group is
+            # kept for later and is not wired to any stimulus.
+            "partial": True,
+            "status": "saved for later; not used as a brain input (light is game-only)",
         }
     return groups
 
@@ -162,6 +166,7 @@ def build_groups() -> dict[str, dict]:
         if missing:
             raise ValueError(f"group {name}: {len(missing)} IDs not in v630: {missing[:5]}")
         g["count"] = len(g["ids"])
+        g.setdefault("partial", False)
         # FlyWire IDs exceed 2^53, so store as strings for JSON/JS safety.
         g["ids"] = [str(i) for i in g["ids"]]
     return {"flywire_version": FLYWIRE_VERSION, "groups": groups}
