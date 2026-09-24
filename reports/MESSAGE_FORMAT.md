@@ -10,6 +10,8 @@ with long lists shortened to `"..."`.
 | `/ws/dashboard` | Laptop dashboard | `ping`, `reset_brain` | `hello`, `tick` (≤ 20 Hz), `ack`, `error`, `pong` |
 | `GET /health` | anyone | | server status (JSON) |
 | `GET /api/brain` | anyone | | the `brain` object from `hello` |
+| `GET /api/positions` | dashboard | | neuron positions for the 3D view (Phase 4, see below) |
+| `GET /dashboard/` | browser | | the dashboard page (`web/dashboard/`); `/` redirects here |
 
 ## Conventions
 
@@ -220,5 +222,20 @@ The same fields as `tick.game`, plus `t_ms`.
 {"ok": true, "mode": "reduced", "backend": "numba", "n_neurons": 19698, "t_ms": 200.0,
  "chunks": 4, "last_compute_ms": 13.7, "lag_ms": 0.0, "clients": {"phone": 1, "dashboard": 1}}
 ```
+
+## `GET /api/positions` (Phase 4)
+
+```json
+{"units": "um", "axes": "FlyWire voxel axes scaled to um (x, y = EM image plane, y grows down; z = section axis)",
+ "source": "flyconnectome/flywire_annotations@8587524:supplemental_files/Supplemental_file1_neuron_annotations.tsv columns pos_x, pos_y, pos_z (4x4x40 nm voxels); v630 IDs unchanged in v783 only",
+ "n_neurons": 19698, "n_placed": 17101,
+ "ids": ["720575940602313952", "..."],
+ "xyz": [558.3, 333.9, 193.8, "..."],
+ "groups_unplaced": {"sugar_grn": ["..."], "bitter_grn": ["..."], "mn9": ["..."], "mn9_primary": []}}
+```
+
+`xyz` is flat: neuron `ids[i]` is at `xyz[3i : 3i+3]`. Neurons missing from `ids` have no
+position (their root ID changed between v630 and v783) and are not drawn. The WebSocket
+messages did not change in Phase 4.
 
 All values in this file come from `server/config.py`.

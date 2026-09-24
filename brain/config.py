@@ -25,7 +25,8 @@ VALIDATION_RESULTS_PATH = DATA_DIR / "validation_results.json"
 SHIU_REPO = "philshiu/Drosophila_brain_model"
 SHIU_COMMIT = "91bdd1e7dcf193f3e7ca5a8933497fcef63b7960"
 
-# FlyWire annotations (Schlegel et al. 2024), used only for photoreceptor lookup.
+# FlyWire annotations (Schlegel et al. 2024), used for the photoreceptor lookup
+# and for the dashboard neuron positions (brain/positions.py).
 # Root IDs there are from FlyWire release 783.
 ANNOTATIONS_REPO = "flyconnectome/flywire_annotations"
 ANNOTATIONS_COMMIT = "8587524c1748ce5ef2080822a2fc890fc03bf597"
@@ -223,3 +224,23 @@ class Phase2ValidationConfig:
 
 
 PHASE2 = Phase2ValidationConfig()
+
+
+# ---------------------------------------------------------------------------
+# Phase 4: neuron positions for the dashboard 3D view (brain/positions.py)
+# ---------------------------------------------------------------------------
+@dataclass(frozen=True)
+class PositionsConfig:
+    """Where neuron positions come from in the annotation table.
+
+    Columns and resolution from flyconnectome/flywire_annotations,
+    supplemental_files/README.md: "pos_x, pos_y, pos_z are anchor coordinates in
+    4x4x40nm voxel space (typically on the backbone of the neuron)".
+    """
+
+    columns: tuple[str, str, str] = ("pos_x", "pos_y", "pos_z")
+    voxel_um: tuple[float, float, float] = (0.004, 0.004, 0.040)  # 4 x 4 x 40 nm
+    decimals: int = 1  # rounding of the µm values sent to the browser
+
+
+POSITIONS = PositionsConfig()

@@ -20,6 +20,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 
 from server.brain_runner import BrainRunner, EventError, load_runner
 from server.config import SERVER, ServerConfig
+from server.dashboard import add_dashboard_routes
 
 log = logging.getLogger("fly.server")
 
@@ -154,6 +155,12 @@ def create_app(cfg: ServerConfig = SERVER,
     @app.get("/api/brain")
     async def brain_info() -> dict:
         return app.state.live.runner.info()
+
+    def brain_ids():
+        r = app.state.live.runner
+        return r.ids, {g: v["ids"] for g, v in r.info()["groups"].items()}
+
+    add_dashboard_routes(app, brain_ids)
 
     async def serve(ws: WebSocket, role: str) -> None:
         live: LiveBrain = app.state.live
