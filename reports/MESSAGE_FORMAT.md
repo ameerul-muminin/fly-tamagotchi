@@ -111,11 +111,15 @@ Any other type gets an `error`.
    "sugar":  {"group": "sugar_grn",  "rate_hz": 150.0},
    "bitter": {"group": "bitter_grn", "rate_hz": 150.0}
   },
-  "light_is_brain_input": false
+  "light_is_brain_input": false,
+  "eating": {"group": "mn9_primary", "threshold_hz": 20.0, "window_ms": 500.0}
  },
  "game": { "...": "same object as in tick.game" }
 }
 ```
+
+`brain.eating` says how `game.eating` is read out: the mean rate of `group` over the last
+`window_ms` must reach `threshold_hz`. The dashboard draws this threshold on its MN9 meter.
 
 `brain.groups` lists only the groups present in the running brain:
 

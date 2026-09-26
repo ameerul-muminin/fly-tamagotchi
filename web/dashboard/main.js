@@ -1,4 +1,5 @@
-// Wires a message source to the state, the fly, the mood bars, the chart and the 3D brain.
+// Wires a message source to the state, the fly, the meters, the mood bars, the chart,
+// the 3D brain and the brain sounds.
 // URL options: ?replay=samples/session.jsonl&speed=1&loop=1  (default: live server)
 
 import { CONFIG } from "./config.js";
@@ -6,11 +7,14 @@ import { DashboardState } from "./state.js";
 import { createFly } from "./fly.js";
 import { ActivityChart } from "./chart.js";
 import { LiveSource, ReplaySource } from "./source.js";
+import { BrainSound } from "./sound.js";
 
 const $ = (sel) => document.querySelector(sel);
 const params = new URLSearchParams(location.search);
 const state = new DashboardState();
-const fly = createFly($("#fly"));
+// The 2D fly shows at once; the 3D fly replaces it when three.js has loaded.
+let fly = createFly($("#fly"));
+const sound = new BrainSound();
 const chart = new ActivityChart($("#chart"), $("#chart-tip"));
 
 const replayUrl = params.get("replay");
@@ -49,8 +53,16 @@ function onMessage(msg) {
   if (msg.type === "hello") {
     const b = msg.brain;
     $("#brain-info").textContent = `${b.mode} brain · ${b.n_neurons.toLocaleString()} neurons · ${b.backend}`;
+    const eat = b.eating;
+    const line = $("#eat-line");
+    if (eat) {
+      line.hidden = false;
+      line.style.left = `${Math.min(100, (100 * eat.threshold_hz) / CONFIG.meterMaxHz.mn9_primary)}%`;
+      line.dataset.label = `eats at ${eat.threshold_hz} Hz`;
+    }
     buildBrainView();
   } else if (msg.type === "tick") {
+    sound.play(msg, state.flyState);
     const now = Date.now();
     perf.firstTickWallMs ??= now;
     perf.lastTickWallMs = now;
@@ -97,6 +109,57 @@ function legend() {
     .join("");
 }
 
+const STATE_WORD = { eating: "Eating", disgusted: "Disgusted", resting: "Resting", idle: "Idle" };
+
+// Meter readouts, smoothed a little so a 50 ms tick doesn't flicker.
+const meters = { sugar_grn: 0, bitter_grn: 0, mn9_primary: 0, seq: null };
+
+function updateMeters(tick) {
+  const eat = state.brain?.eating;
+  const raw = {
+    sugar_grn: tick.group_rates_hz.sugar_grn ?? 0,
+    bitter_grn: tick.group_rates_hz.bitter_grn ?? 0,
+    // The eating readout itself: MN9 averaged over the server's eating window.
+    mn9_primary: tick.game.mn9_rate_hz ?? 0,
+  };
+  for (const el of document.querySelectorAll(".meter")) {
+    const g = el.dataset.group;
+    meters[g] += CONFIG.meterSmoothing * (raw[g] - meters[g]);
+    const pct = Math.min(100, (100 * meters[g]) / CONFIG.meterMaxHz[g]);
+    el.querySelector(".fill").style.width = `${pct.toFixed(1)}%`;
+    el.querySelector("output").textContent = `${Math.round(meters[g])} Hz`;
+  }
+  const over = eat ? raw.mn9_primary >= eat.threshold_hz : tick.game.eating;
+  $('.meter[data-group="mn9_primary"]').classList.toggle("over", !!over);
+  setText("#why-text", whyText(tick, raw));
+}
+
+/** One or two plain sentences on what the brain is doing right now. */
+function whyText(tick, r) {
+  const thr = state.brain?.eating?.threshold_hz;
+  const line = thr != null ? `the ${thr} Hz eating line` : "the eating line";
+  const hz = (x) => `${Math.round(x)} Hz`;
+  const sugarOn = tick.inputs_hz.sugar > 0;
+  const bitterOn = tick.inputs_hz.bitter > 0;
+  let s;
+  if (tick.game.eating) {
+    s = `Sugar neurons fire at ${hz(r.sugar_grn)} and drive MN9 to ${hz(r.mn9_primary)}, above ${line}. The fly eats.`;
+  } else if (sugarOn && bitterOn) {
+    s = `Sugar and bitter neurons both fire. MN9 only reaches ${hz(r.mn9_primary)}, below ${line}, so the fly doesn't eat. ` +
+      "The wiring works out the mix; there is no bitter rule.";
+  } else if (sugarOn) {
+    s = `Sugar neurons fire at ${hz(r.sugar_grn)}. MN9 is at ${hz(r.mn9_primary)} and has to pass ${line}.`;
+  } else if (bitterOn) {
+    s = `Bitter neurons fire at ${hz(r.bitter_grn)}. MN9 stays at ${hz(r.mn9_primary)}: nothing tells the fly to eat.`;
+  } else {
+    s = "No taste input, so the taste neurons are quiet. Tap the phone to give sugar, or shake it for bitter.";
+  }
+  if (tick.game.light <= CONFIG.darkLevel) {
+    s += " It's dark, so the fly rests. That part is a game rule: light isn't wired into this brain.";
+  }
+  return s;
+}
+
 function caption(s, tick) {
   const g = tick.game;
   switch (s) {
@@ -138,18 +201,27 @@ function updateDom() {
       : "Placeholder values: the mood rules arrive in Phase 5.");
   }
   if (!tick) return;
-  fly.setState(state.flyState, { sugar: tick.inputs_hz.sugar > 0, bitter: tick.inputs_hz.bitter > 0 });
-  $(".fly-panel").classList.toggle("dark", state.flyState === "resting");
+  fly.setState(state.flyState, { sugar: tick.inputs_hz.sugar > 0, bitter: tick.inputs_hz.bitter > 0 },
+    { mn9Hz: tick.game.mn9_rate_hz });
+  const stage = $("#stage");
+  if (stage.dataset.state !== state.flyState) stage.dataset.state = state.flyState;
+  setText("#fly-state-word", STATE_WORD[state.flyState] ?? "Idle");
   setText("#fly-caption", caption(state.flyState, tick));
+  setText("#gulps", String(state.gulps));
+  if (tick.seq !== meters.seq) {
+    meters.seq = tick.seq;
+    updateMeters(tick);
+  }
   setText("#clock", `t = ${(tick.t_ms / 1000).toFixed(1)} s`);
   const fps = medianFps();
   const age = percentile(perf.tickAges, 0.95);
-  setText("#stats",
-    `ticks ${state.stats.ticks} · lost ${state.stats.lost} · spiking ${tick.n_spiking} · ` +
-    `spikes ${tick.total_spikes} · compute ${tick.perf.compute_ms.toFixed(1)} ms/chunk · ` +
-    `lag ${tick.perf.lag_ms.toFixed(0)} ms · ${fps.toFixed(0)} fps` +
-    (source.kind === "live" && age != null ? ` · tick age p95 ${age.toFixed(0)} ms` : "") +
-    (brain ? ` · lit ${brain.litCount}` : ""));
+  setText("#stats", [
+    `ticks ${state.stats.ticks}`, `lost ${state.stats.lost}`, `spiking ${tick.n_spiking}`,
+    `spikes ${tick.total_spikes}`, `compute ${tick.perf.compute_ms.toFixed(1)} ms per 50 ms chunk`,
+    `lag ${tick.perf.lag_ms.toFixed(0)} ms`, `${fps.toFixed(0)} fps`,
+    ...(source.kind === "live" && age != null ? [`tick age p95 ${age.toFixed(0)} ms`] : []),
+    ...(brain ? [`lit ${brain.litCount}`] : []),
+  ].join("   "));
 }
 
 function percentile(xs, q) {
@@ -181,12 +253,28 @@ function frame(now) {
     perf.tickAges.push(Date.now() - tick.server_time_ms);
     if (perf.tickAges.length > 400) perf.tickAges.shift();
   }
+  fly.render(now);
   perf.chartPoints = chart.update(state);
   updateDom();
   perf.workMs.push(performance.now() - now);
   if (perf.workMs.length > 240) perf.workMs.shift();
   requestAnimationFrame(frame);
 }
+
+$("#sound").addEventListener("click", async () => {
+  if (sound.on) {
+    sound.disable();
+  } else {
+    try {
+      await sound.enable();
+    } catch (err) {
+      setText("#sound-label", "No audio in this browser");
+      return;
+    }
+  }
+  $("#sound").setAttribute("aria-pressed", String(sound.on));
+  setText("#sound-label", sound.on ? "Listening" : "Hear the brain");
+});
 
 $("#reset").addEventListener("click", () => {
   source.send({ type: "reset_brain" });
@@ -198,6 +286,8 @@ window.__dash = {
   state,
   perf,
   source,
+  get fly() { return fly; },
+  get brain() { return brain; },
   snapshot() {
     return {
       source: source.kind,
@@ -213,7 +303,9 @@ window.__dash = {
       tickWallSpanMs: perf.lastTickWallMs - perf.firstTickWallMs,
       statesSeen: [...state.statesSeen],
       flyState: state.flyState,
-      flyDomState: $("#fly svg").dataset.state ?? null,
+      flyDomState: $("#fly").dataset.state ?? null,
+      flyView: $("#fly canvas") ? "3d" : "2d",
+      gulps: state.gulps,
       chartPoints: perf.chartPoints,
       medianFps: medianFps(),
       medianFrameWorkMs: percentile(perf.workMs, 0.5),
@@ -227,6 +319,13 @@ window.__dash = {
 };
 
 legend();
+import("./fly3d.js")
+  .then(({ Fly3D }) => {
+    const el = $("#fly");
+    el.innerHTML = "";
+    fly = new Fly3D(el, CONFIG, params.get("quality") ?? CONFIG.fly3d.quality);
+  })
+  .catch((err) => console.warn(`3D fly unavailable, showing the 2D fly: ${err.message}`));
 loadPositions().catch((err) => {
   $("#brain-msg").textContent = `No neuron positions: ${err.message}`;
   perf.jsErrors.push(`positions: ${err.message}`);

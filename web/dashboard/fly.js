@@ -1,4 +1,5 @@
-// 2D cartoon fly (side view). The state only changes CSS classes; styles live in style.css.
+// 2D cartoon fly (side view): the fallback when the 3D fly (fly3d.js) cannot load.
+// The state only changes CSS classes; styles live in style.css.
 
 const SVG = `
 <svg class="fly" viewBox="0 0 320 230" role="img" aria-label="cartoon fly">
@@ -39,7 +40,7 @@ const SVG = `
 
 export const FLY_STATES = ["idle", "eating", "disgusted", "resting"];
 
-/** Put a fly in `container`; returns {setState(state, {sugar, bitter})}. */
+/** Put a fly in `container`; returns {setState(state, {sugar, bitter}), render()}. */
 export function createFly(container) {
   container.innerHTML = SVG;
   const svg = container.querySelector("svg");
@@ -49,6 +50,8 @@ export function createFly(container) {
       svg.classList.toggle("has-sugar", !!food.sugar);
       svg.classList.toggle("has-bitter", !!food.bitter);
       svg.dataset.state = state;
+      container.dataset.state = state;
     },
+    render() {},
   };
 }

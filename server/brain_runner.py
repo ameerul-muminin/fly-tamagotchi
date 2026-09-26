@@ -86,6 +86,10 @@ class BrainRunner:
             "stimuli": {s: {"group": g, "rate_hz": self.cfg.input_rate_hz[s]}
                         for s, g in self.cfg.input_groups.items()},
             "light_is_brain_input": False,
+            # How `game.eating` is read out (lets the dashboard draw the threshold).
+            "eating": {"group": self.cfg.eating_group,
+                       "threshold_hz": self.cfg.eating_threshold_hz,
+                       "window_ms": self.cfg.eating_window_ms},
         }
 
     # ---------------------------------------------------------------- events

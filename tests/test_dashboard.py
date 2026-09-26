@@ -61,7 +61,8 @@ def test_dashboard_page_and_positions_route_on_live_app():
     with toy_client() as c:
         r = c.get("/dashboard/")
         assert r.status_code == 200 and "Fly Tamagotchi" in r.text
-        for f in ("main.js", "state.js", "config.js", "brain3d.js", "samples/session.jsonl"):
+        for f in ("main.js", "state.js", "config.js", "brain3d.js", "fly3d.js", "fly_motion.js", "sound.js",
+                  "phone_link.js", "samples/session.jsonl"):
             assert c.get(f"/dashboard/{f}").status_code == 200, f
         assert c.get("/", follow_redirects=False).headers["location"] == "/dashboard/"
         p = c.get("/api/positions").json()
@@ -121,7 +122,7 @@ def test_dashboard_js_unit_tests_pass():
     node = shutil.which("node")
     if node is None:
         pytest.fail("Node.js is needed for the dashboard JS tests (web/dashboard/tests)")
-    r = subprocess.run([node, "--test", "tests/state.test.mjs"], cwd=PROJECT_ROOT / "web" / "dashboard",
+    r = subprocess.run([node, "--test", "tests/state.test.mjs", "tests/fun.test.mjs"], cwd=PROJECT_ROOT / "web" / "dashboard",
                        capture_output=True, text=True, timeout=120)
     assert r.returncode == 0, r.stdout + r.stderr
     assert "fail 0" in r.stdout

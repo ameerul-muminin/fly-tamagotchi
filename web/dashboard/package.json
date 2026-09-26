@@ -4,6 +4,6 @@
   "type": "module",
   "description": "Dashboard page. No build step and no npm dependencies; three.js loads from a pinned CDN URL.",
   "scripts": {
-    "test": "node --test tests/state.test.mjs"
+    "test": "node --test tests/state.test.mjs tests/fun.test.mjs"
   }
 }

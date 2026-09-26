@@ -62,12 +62,27 @@ Start the server, then open <http://localhost:8000/dashboard/> on the laptop.
   <http://localhost:8000/dashboard/?replay=samples/session.jsonl> (add `&speed=4`, `&loop=1`).
 - **Record** a new sample (real reduced-brain output): `python -m server.record_session --spawn`
 - **Validate** in headless Chrome (replay + live): `python -m server.validate_dashboard`
-- **JS tests**: `node --test web/dashboard/tests/state.test.mjs` (also run by `pytest`; needs Node.js)
+- **JS tests**: `cd web/dashboard && npm test` (also run by `pytest`; needs Node.js)
 
 three.js loads from `cdn.jsdelivr.net` (pinned to 0.170.0), so the 3D view needs internet access.
 Neuron positions come from the FlyWire annotation table (`pos_x/y/z`, 4×4×40 nm voxels) for
 v630 neurons whose root ID is unchanged in v783: 17,101 of the 19,698 reduced-brain neurons.
 Display settings are in `web/dashboard/config.js`.
+
+What's on the page:
+
+- **The fly** (`fly3d.js`): a 3D Drosophila on a dish, with a true 1 mm scale bar. Drag to turn it.
+  It extends its proboscis and pumps only while MN9 fires (the pump rate follows the MN9 rate),
+  grooms and buzzes when bitter neurons fire, and rests in the dark. The poses live in
+  `fly_motion.js`; the state comes from the brain (see `state.js`).
+  Quality is automatic: full (shadows, reflections) on a GPU, light on a software renderer.
+  Force it with `?quality=high` or `?quality=low`. If three.js can't load, a 2D fly is shown.
+- **Why it's doing that**: live meters for the sugar and bitter neurons and MN9, with the
+  server's eating threshold drawn on the MN9 meter, and a sentence explaining the current state.
+- **Gulps**: how many times the brain started eating this session.
+- **Hear the brain** (`sound.js`): every spike becomes a sound, like a lab's audio monitor.
+  MN9 spikes are deep thumps, sugar neurons bright plucks, bitter neurons a low buzz, the rest
+  soft clicks, plus a gulp and a "blech" when eating or disgust starts. A silent brain is silent.
 
 ## Data
 

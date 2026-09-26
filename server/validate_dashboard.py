@@ -168,7 +168,8 @@ async def replay_check(cdp: Cdp) -> dict:
         "spiking neurons flashed": snap["flashedTotal"] > 0 and snap["maxLit"] > 0,
         "chart has data": snap["chartPoints"] > 0,
         "all four fly states shown": set(c.replay_states) <= set(snap["statesSeen"]),
-        "fly SVG state matches state": snap["flyDomState"] == snap["flyState"],
+        "fly view state matches state": snap["flyDomState"] == snap["flyState"],
+        "3D fly drawn (not the 2D fallback)": snap["flyView"] == "3d",
         "mood bars filled": all(v for v in snap["mood"].values()),
         "no JS errors": len(snap["jsErrors"]) <= c.max_js_errors,
     }

@@ -35,6 +35,8 @@ export class DashboardState {
     this.pending = null;        // {state, since} candidate state waiting for the hold time
     this.statesSeen = new Set();
     this.spikeQueue = [];       // spiking ID lists not yet drawn by the 3D view
+    this.gulps = 0;             // eating onsets (game.eating false -> true) this session
+    this.wasEating = false;
   }
 
   /** Apply one server message. Returns the message type. */
@@ -83,6 +85,8 @@ export class DashboardState {
     this.stats.ticks += 1;
     this.lastTick = tick;
     this.game = tick.game;
+    if (tick.game.eating && !this.wasEating) this.gulps += 1;
+    this.wasEating = tick.game.eating === true;
 
     const t = tick.t_ms;
     const cutoff = t - this.config.chartWindowMs;

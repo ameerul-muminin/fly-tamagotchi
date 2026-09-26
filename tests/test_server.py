@@ -72,6 +72,9 @@ def test_hello_describes_the_brain():
             assert b["mode"] == "toy" and b["n_neurons"] == 10
             assert b["groups"]["sugar_grn"]["ids"] == [str(10**17 + i) for i in range(3)]
             assert b["light_is_brain_input"] is False
+            assert b["eating"] == {"group": SERVER.eating_group,
+                                   "threshold_hz": SERVER.eating_threshold_hz,
+                                   "window_ms": SERVER.eating_window_ms}
         assert c.get("/health").json()["clients"] == {"phone": 1, "dashboard": 1}
 
 

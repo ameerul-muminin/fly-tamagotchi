@@ -23,6 +23,10 @@ export const CONFIG = {
   ],
   chartMaxHz: 200,             // y axis top (input drive is 150 Hz)
 
+  // --- "Why it's doing that" meters ---
+  meterMaxHz: { sugar_grn: 200, bitter_grn: 200, mn9_primary: 150 },  // full bar
+  meterSmoothing: 0.35,        // per tick, 1 = no smoothing
+
   // --- 3D brain ---
   flashDecayMs: 300,           // a spike's flash fades with this time constant
   pointSizeBase: 2.0,          // px, neurons at rest
@@ -51,4 +55,40 @@ export const CONFIG = {
   wsPath: "/ws/dashboard",
   positionsPath: "/api/positions",
   phoneLinkRefreshMs: 5000,   // how often the phone QR panel re-checks the phone URL
+
+  // --- 3D fly (fly3d.js, fly_motion.js); display only ---
+  fly3d: {
+    unitsPerMm: 1.08,          // model is 2.7 units long; a Drosophila female is ~2.5 mm
+    poseTauSec: 0.18,          // how fast the pose follows a state change
+    pumpMinHz: 2,              // proboscis pump rate while MN9 fires...
+    pumpMaxHz: 8,
+    mn9HzPerPumpHz: 14,        // ...= MN9 Hz / this, clamped to [min, max]
+    groomEverySec: 7,          // idle fly rubs its front legs this often...
+    groomForSec: 2.2,          // ...for this long
+    fillSec: 12,               // belly fills over this much eating time
+    emptySec: 40,              // and empties over this long
+    maxPixelRatio: 1.5,
+    fov: 30,                   // camera lens (degrees, vertical)...
+    wideAspect: 1.3,           // ...widened for views narrower than this aspect...
+    maxFov: 40,                // ...up to this
+    shadowMapSize: 1024,
+    // Quality: "auto" = "low" on a software renderer, else "high". URL ?quality= overrides.
+    quality: "auto",
+    lowPixelRatio: 0.6,        // render scale in low quality (the canvas is stretched)
+    lowMaxFps: 20,             // low quality draws the fly at most this often
+    slowFrameMs: 40,           // high quality drops shadows/reflections if the median
+    slowCheckFrames: 120,      // frame over this many frames is slower than this
+  },
+
+  // --- "Hear the brain" (sound.js): spikes become sound, like a lab audio monitor ---
+  sound: {
+    volume: 0.5,
+    // Max sounds per tick and per channel (a tick is 50 ms of brain time).
+    maxPerTick: { mn9: 8, sugar: 5, bitter: 5, other: 7 },
+    // Background crackle: clicks per tick = otherClickScale * sqrt(other spikes).
+    otherClickScale: 0.25,
+    // Sugar/bitter notes per tick = group spikes / this (then capped).
+    groupSpikesPerNote: 30,
+    scheduleAheadSec: 0.03,    // sounds for a tick are spread over the next 50 ms
+  },
 };

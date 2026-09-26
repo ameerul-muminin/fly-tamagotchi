@@ -77,7 +77,7 @@ export class ActivityChart {
     const y = (hz) => PAD.t + plotH - (Math.min(hz, config.chartMaxHz) / config.chartMaxHz) * plotH;
 
     // grid + y labels
-    ctx.font = "11px system-ui, sans-serif";
+    ctx.font = "12px 'Atkinson Hyperlegible', system-ui, sans-serif";
     ctx.fillStyle = ink;
     ctx.strokeStyle = grid;
     ctx.lineWidth = 1;
