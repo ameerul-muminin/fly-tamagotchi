@@ -1,0 +1,533 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Fly Tamagotchi: how it works</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+  @page { size: A4; margin: 18mm 18mm 20mm; }
+  :root {
+    --ink: #1b2330;
+    --muted: #5b6576;
+    --line: #d9dee6;
+    --soft: #f3f5f8;
+    --accent: #2a5fb0;
+    --sugar: #1f9e62;
+    --bitter: #9b43c9;
+    --mn9: #c97d0a;
+    --game: #a8780c;
+    --display: "Bricolage Grotesque", "Segoe UI", sans-serif;
+    --serif: "Source Serif 4", Georgia, serif;
+    --mono: "JetBrains Mono", Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { margin: 0; color: var(--ink); background: #fff; font: 10.4pt/1.58 var(--serif); }
+  h1, h2, h3, h4 { font-family: var(--display); line-height: 1.15; margin: 0; }
+  h2 { font-size: 21pt; font-weight: 800; letter-spacing: -0.01em; margin: 10mm 0 4mm; break-after: avoid; }
+  h2.page { break-before: page; margin-top: 0; }
+  .cover { break-after: page; }
+  table.long { break-inside: auto; }
+  table.long tr { break-inside: avoid; }
+  h2 .n { color: var(--accent); margin-right: 3mm; }
+  h3 { font-size: 13pt; font-weight: 700; margin: 6mm 0 2mm; break-after: avoid; }
+  h4 { font-size: 10.5pt; font-weight: 700; margin: 4mm 0 1mm; break-after: avoid; }
+  p { margin: 0 0 2.6mm; max-width: 165mm; }
+  ul, ol { margin: 0 0 3mm; padding-left: 6mm; }
+  li { margin: 0 0 1.2mm; }
+  code, .mono { font-family: var(--mono); font-size: 8.4pt; }
+  p code, li code, td code { background: var(--soft); padding: 0.2mm 1mm; border-radius: 1mm; }
+  pre { font: 8.2pt/1.5 var(--mono); background: var(--soft); border-left: 2px solid var(--accent);
+        padding: 3mm 4mm; margin: 0 0 3.5mm; white-space: pre-wrap; break-inside: avoid; }
+  table { border-collapse: collapse; width: 100%; margin: 0 0 4mm; font-size: 9.2pt; break-inside: avoid; }
+  th { font: 600 8.6pt/1.3 var(--display); text-align: left; color: var(--muted); border-bottom: 1.5px solid var(--ink); padding: 1.5mm 2mm; }
+  td { border-bottom: 1px solid var(--line); padding: 1.6mm 2mm; vertical-align: top; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  figure { margin: 2mm 0 5mm; break-inside: avoid; }
+  figcaption { font-size: 8.8pt; color: var(--muted); margin-top: 1.5mm; max-width: 165mm; }
+  img.shot { width: 100%; border: 1px solid var(--line); border-radius: 2mm; display: block; }
+  .crop { overflow: hidden; border: 1px solid var(--line); border-radius: 2mm; }
+  .crop img { width: 100%; display: block; }
+  .note { border-left: 3px solid var(--mn9); background: #fdf7ec; padding: 2.5mm 4mm; margin: 0 0 4mm; break-inside: avoid; }
+  .rule { border-left: 3px solid var(--accent); background: #eef3fb; padding: 2.5mm 4mm; margin: 0 0 4mm; break-inside: avoid; }
+  .rule p:last-child, .note p:last-child { margin-bottom: 0; }
+  .tag { font: 600 7.4pt/1 var(--display); border: 1px solid currentColor; border-radius: 99px; padding: 0.6mm 2mm; white-space: nowrap; }
+  .tag.brain { color: var(--accent); }
+  .tag.game { color: var(--game); }
+  .swatch { display: inline-block; width: 2.6mm; height: 2.6mm; border-radius: 50%; margin-right: 1mm; vertical-align: -0.2mm; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 6mm; }
+  .lead { font-size: 12pt; line-height: 1.5; color: var(--ink); max-width: 160mm; }
+  .muted { color: var(--muted); }
+  .small { font-size: 8.8pt; }
+
+  /* cover */
+  .cover { height: 250mm; display: flex; flex-direction: column; justify-content: space-between; }
+  .cover h1 { font-size: 46pt; font-weight: 800; letter-spacing: -0.02em; line-height: 0.95; margin-top: 22mm; }
+  .cover .sub { font: 500 15pt/1.35 var(--display); color: var(--muted); margin-top: 6mm; max-width: 140mm; }
+  .cover .meta { font-size: 9.5pt; color: var(--muted); }
+  .cover .meta b { color: var(--ink); font-weight: 600; }
+  .cover-fig { margin: 8mm 0 0; }
+  .toc { columns: 2; column-gap: 10mm; padding: 0; list-style: none; margin: 0; }
+  .toc li { font: 500 10.5pt/1.4 var(--display); margin-bottom: 2mm; break-inside: avoid; }
+  .toc li span { color: var(--accent); display: inline-block; width: 8mm; }
+  .toc li small { display: block; font: 400 8.8pt/1.35 var(--serif); color: var(--muted); padding-left: 8mm; }
+
+  svg text { font-family: "Bricolage Grotesque", "Segoe UI", sans-serif; }
+  .diagram { width: 100%; height: auto; display: block; }
+</style>
+</head>
+<body>
+
+<!-- ================================================================ cover -->
+<section class="cover">
+  <div>
+    <h1>Fly Tamagotchi,<br>explained</h1>
+    <p class="sub">A virtual fruit fly whose eating is decided by a simulated copy of a real fly brain. This guide walks through the science and every part of the code.</p>
+    <figure class="cover-fig">
+      <div class="crop"><img src="dash_eating.png" alt="The dashboard while the fly eats"></div>
+      <figcaption>The laptop dashboard while the fly eats. The phone gave sugar, the sugar-taste neurons drove the MN9 feeding neuron to 74 Hz, over the 20 Hz line, and so the fly extends its proboscis into the drop. Right: the spiking neurons of the simulated brain at their real positions.</figcaption>
+    </figure>
+  </div>
+  <div>
+    <ol class="toc">
+      <li><span>1</span>The idea in one page</li>
+      <li><span>2</span>The science you need<small>Neurons, spikes, the connectome, the LIF model</small></li>
+      <li><span>3</span>How the pieces fit<small>Architecture and the repository map</small></li>
+      <li><span>4</span>The journey of one tap</li>
+      <li><span>5</span>Inside the brain<small><code>brain/</code></small></li>
+      <li><span>6</span>Inside the server<small><code>server/</code></small></li>
+      <li><span>7</span>The phone page<small><code>web/phone/</code></small></li>
+      <li><span>8</span>The dashboard<small><code>web/dashboard/</code></small></li>
+      <li><span>9</span>How we know it works</li>
+      <li><span>10</span>Running it and changing it</li>
+      <li><span>11</span>Limits and open questions</li>
+      <li><span>12</span>Things to try, and a glossary</li>
+    </ol>
+    <p class="meta" style="margin-top:8mm">Written for the project as of commit <b>{{COMMIT}}</b>, {{DATE}}. Numbers quoted here come from the project's own reports and test runs.</p>
+  </div>
+</section>
+
+<!-- ================================================================ 1 -->
+<h2 class="page"><span class="n">1</span>The idea in one page</h2>
+<p class="lead">You feed a fruit fly with your phone. Tap for sugar, shake for something bitter, cover the camera to make it dark. The laptop shows the fly, its mood and its brain lighting up. The twist: nobody wrote a rule saying "the fly eats sugar". The fly eats only if the simulated neurons that drive feeding actually fire.</p>
+
+<p>The brain is a model built from the <b>FlyWire connectome</b>: a map of every neuron in an adult fruit fly brain and every connection between them, traced from electron microscope images. Shiu et al. (2024, <i>Nature</i>) showed that a simple simulation of this wiring predicts real fly behavior. Stimulate the sugar-taste neurons and a feeding motor neuron called <b>MN9</b> starts firing. Add bitter taste and MN9 almost stops. This project runs that same model live, 50 milliseconds at a time, and connects it to a phone and a screen.</p>
+
+<div class="rule">
+  <p><b>The golden rule.</b> Fly behavior must come from simulated spikes, never from game logic. The fly eats only if MN9 fires. Bitter reduces eating only through the wiring. If the code ever contained <code>if bitter: eat_less</code>, the whole project would be pointless: it would be a cartoon, not a brain.</p>
+</div>
+
+<p>What the model lacks (hunger, sleep, tiredness) is added as honest game rules, labelled as such everywhere:</p>
+
+<table>
+  <tr><th>Behavior</th><th>Where it comes from</th></tr>
+  <tr><td>Eating (MN9 firing above 20 Hz)</td><td><span class="tag brain">brain</span></td></tr>
+  <tr><td>Eating less when bitter is present</td><td><span class="tag brain">brain</span> The wiring inhibits MN9. There is no rule.</td></tr>
+  <tr><td>Looking disgusted</td><td><span class="tag brain">brain</span> Bitter taste neurons firing at 20 Hz or more.</td></tr>
+  <tr><td>Neurons flashing in the 3D view, the sounds</td><td><span class="tag brain">brain</span> Real spikes from each 50 ms window.</td></tr>
+  <tr><td>Resting in the dark</td><td><span class="tag game">game</span> Light is not wired into this brain (see section 11).</td></tr>
+  <tr><td>Hunger, happiness, energy</td><td><span class="tag game">game</span> Placeholders until Phase 5 adds the rules.</td></tr>
+</table>
+
+<h3>What exists today</h3>
+<p>The project is built in phases (the plan is in <code>PLAN.md</code>, the working rules in <code>CLAUDE.md</code>). Phases 1 to 4 are done, plus a dashboard upgrade:</p>
+<ol>
+  <li><b>Brain works offline.</b> The full 127,400-neuron model, checked spike for spike against the paper's own code.</li>
+  <li><b>Server.</b> A 19,698-neuron reduced circuit that runs faster than real time, inside a FastAPI server with WebSockets.</li>
+  <li><b>Phone page.</b> Tap, shake and camera inputs, vibration when the fly eats, a QR code to connect.</li>
+  <li><b>Dashboard.</b> The fly, mood bars, a 3D brain of 17,101 neurons at their real positions, a firing-rate chart.</li>
+  <li><b>Upgrade.</b> A three.js 3D fly, a "why it's doing that" panel, and "Hear the brain": every spike becomes a sound.</li>
+</ol>
+<p>Still to come: Phase 5 (game rules), Phase 6 (real-iPhone testing), Phase 7 (optional classroom features).</p>
+
+<!-- ================================================================ 2 -->
+<h2><span class="n">2</span>The science you need</h2>
+
+<h3>Neurons and spikes</h3>
+<p>A neuron is a cell that keeps an electrical voltage across its membrane, about −52 millivolts at rest in this model. Input from other neurons nudges that voltage up or down. When it rises past a threshold (−45 mV here), the neuron <b>spikes</b>: it sends a brief pulse down its output wire to every neuron it connects to, and its voltage snaps back to rest. The <b>firing rate</b> is how many spikes per second a neuron makes, in hertz (Hz). "MN9 fires at 80 Hz" means 80 spikes a second.</p>
+
+<p>Connections are <b>synapses</b>. Some are <b>excitatory</b> (they push the receiving neuron toward its threshold) and some are <b>inhibitory</b> (they push it away). A neuron's chemical messenger, its neurotransmitter, decides which: in the fly, acetylcholine excites, GABA and glutamate inhibit.</p>
+
+<h3>The connectome</h3>
+<p>FlyWire traced every neuron in one adult female fruit fly brain from electron microscope images. The result lists each neuron (with a long ID such as <code>720575940660219265</code>), how many synapses connect each pair, and a predicted neurotransmitter for each neuron. This project uses <b>release 630</b>, the same one the Shiu et al. paper used: 127,400 neurons and 14,687,178 connections.</p>
+
+<h3>From taste to eating</h3>
+<p>A fly tastes with <b>gustatory receptor neurons</b> (GRNs) on its proboscis, the straw-like mouthpart. Some GRNs respond to sugar, others to bitter chemicals. The project uses the exact 21 sugar GRNs and 21 bitter GRNs from the paper's experiments. At the other end is <b>MN9</b>, a motor neuron that drives the muscle which pumps food in. When MN9 fires, the fly is drinking. So the whole question "does the fly eat?" becomes "does MN9 fire?".</p>
+
+<figure>
+  {{ARCH_TASTE_SVG}}
+  <figcaption>The path the model has to discover on its own. Nothing in the code connects sugar to MN9 directly: the signal has to travel through the connectome's intermediate neurons. Bitter GRNs reach MN9 through inhibitory paths.</figcaption>
+</figure>
+
+<h3>The model: leaky integrate-and-fire</h3>
+<p>Real neurons are complicated. The Shiu et al. model uses the simplest useful stand-in, the <b>leaky integrate-and-fire</b> (LIF) neuron. Each neuron has two numbers that change over time:</p>
+<ul>
+  <li><b>v</b>, the membrane voltage. It "leaks" back toward rest (−52 mV) with a time constant of 20 ms, like a bucket with a hole in it.</li>
+  <li><b>g</b>, the synaptic input. Each incoming spike adds to g (weight × number of synapses), and g fades with a 5 ms time constant. g pours into v.</li>
+</ul>
+<pre>dv/dt = (v_0 − v + g) / t_mbr        v_0 = −52 mV, t_mbr = 20 ms
+dg/dt = −g / tau                     tau = 5 ms
+if v &gt; v_th (−45 mV):  spike, then v = −52 mV, g = 0, frozen for 2.2 ms
+an arriving spike (1.8 ms after it was sent):  g += synapses × 0.275 mV × sign</pre>
+
+<figure>
+  {{LIF_SVG}}
+  <figcaption>One neuron in this project's own simulator, fed by 5 input neurons firing randomly at 150 Hz, each with 8 excitatory synapses onto it (seed 3). The voltage climbs as inputs arrive, leaks back between them, and spikes 4 times in 200 ms. An LIF neuron has no spike shape: the spike is an event, drawn here as a tick, and the voltage resets to −52 mV.</figcaption>
+</figure>
+
+<p>Every parameter comes from the paper's code (<code>model.py</code> in <code>philshiu/Drosophila_brain_model</code>, commit <code>91bdd1e</code>), and each one is cited in <code>brain/config.py</code>. The weight per synapse (0.275 mV) was the one free parameter the authors tuned. The simulation steps forward 0.1 ms at a time, so one 50 ms chunk is 500 steps for every neuron.</p>
+
+<h3>How the taste neurons are stimulated</h3>
+<p>In the paper, "giving sugar" means making the sugar GRNs fire randomly at a set rate. This is <b>Poisson input</b>: in every 0.1 ms step, each stimulated neuron has a 1.5% chance (150 Hz × 0.1 ms) of receiving an input event big enough to make it spike (68.75 mV, added straight to v). The phone tap turns this on for 2 seconds.</p>
+
+<h3>The shuffled brain: why the result means anything</h3>
+<p>A skeptic could say: "Any big network would light up something when you poke it." To answer that, the project builds a <b>shuffled brain</b>: the same neurons, the same number of connections, the same weights, but each connection's target is picked at random. If the shuffled brain also made MN9 fire on sugar, the effect would come from the setup, not from the real wiring. It doesn't: MN9 stays at 0 Hz in every shuffled brain tested. The behavior lives in the specific wiring.</p>
+
+<!-- ================================================================ 3 -->
+<h2><span class="n">3</span>How the pieces fit</h2>
+<p>There are three programs: a Python server on the laptop that runs the brain, a web page on the phone, and a web page on the laptop. They talk over <b>WebSockets</b>, a way for a browser and a server to keep a connection open and send messages both ways, instantly.</p>
+
+<figure>
+  {{ARCH_SVG}}
+  <figcaption>Architecture. The phone sends events. The server turns them into input rates, runs the brain in 50 ms chunks, and sends a summary of the spikes to the dashboard 20 times a second and a smaller status to the phone 5 times a second.</figcaption>
+</figure>
+
+<h3>The repository map</h3>
+<table>
+  <tr><th style="width:52mm">Path</th><th>What it is</th></tr>
+  <tr><td><code>PLAN.md</code>, <code>CLAUDE.md</code></td><td>The project plan by phase, and the working rules (golden rule, never loosen tests, cite every parameter).</td></tr>
+  <tr><td><code>brain/</code></td><td>Everything about the model: data download, connectome, neuron groups, the simulator, the reduced circuit, neuron positions, the validation experiments.</td></tr>
+  <tr><td><code>server/</code></td><td>The FastAPI server: the live brain loop, WebSockets, web pages, plus tools (fake phone, session recorder, validators).</td></tr>
+  <tr><td><code>web/phone/</code></td><td>The phone controller page.</td></tr>
+  <tr><td><code>web/dashboard/</code></td><td>The laptop dashboard: fly, brain, meters, chart, sound. No build step; three.js loads from a CDN.</td></tr>
+  <tr><td><code>tests/</code></td><td>77 pytest tests, including the Node.js tests of the phone and dashboard logic.</td></tr>
+  <tr><td><code>reports/</code></td><td>A plan and report for every phase, the message format, screenshots, and this guide.</td></tr>
+  <tr><td><code>data/</code></td><td>Downloaded connectome files and results. Not in git: <code>python -m brain.download_data</code> fetches them.</td></tr>
+</table>
+
+<h3>Three layers of configuration</h3>
+<p>No tunable number is scattered in the code. There are exactly three places to look:</p>
+<ul>
+  <li><code>brain/config.py</code>: model parameters (from the paper), data sources with checksums, validation thresholds.</li>
+  <li><code>server/config.py</code>: the server (input rate, stimulus length, broadcast rates, eating threshold), the phone page (shake threshold, camera rate), the dashboard checks.</li>
+  <li><code>web/dashboard/config.js</code>: how the dashboard draws (colors, chart window, fly animation, sound).</li>
+</ul>
+
+<!-- ================================================================ 4 -->
+<h2 class="page"><span class="n">4</span>The journey of one tap</h2>
+<p>Follow a single tap from your finger to the fly's proboscis. The file and function that do each step are named so you can open them.</p>
+
+<figure>
+  {{TIMELINE_SVG}}
+  <figcaption>Timeline of one tap. Measured on the reduced brain, the phone showed <code>eating: true</code> 116 to 251 ms after the tap (three runs). Most of that is the brain itself: MN9 has to fire hard enough, for long enough, to pass the 500 ms averaging window.</figcaption>
+</figure>
+
+<ol>
+  <li><b>Finger down.</b> The phone page listens for <code>pointerdown</code> (not <code>click</code>, which can add a delay on phones) and sends <code>{"type": "sugar"}</code> over the WebSocket. <span class="muted">web/phone/phone.js, controller.js</span></li>
+  <li><b>The server receives it.</b> <code>BrainRunner.handle_event</code> sets a timer: sugar is on until now + 2000 ms. It replies with an <code>ack</code>. <span class="muted">server/brain_runner.py</span></li>
+  <li><b>Before the next chunk,</b> <code>apply_inputs</code> sees the timer is running and sets the sugar GRNs' Poisson rate to 150 Hz. Rates only change between chunks, never in the middle of one.</li>
+  <li><b>The brain runs 50 ms.</b> <code>LIFSimulator.run</code> does 500 steps of 0.1 ms over 19,698 neurons, on a worker thread so the server stays responsive. With numba this takes about 8 ms. <span class="muted">brain/simulator.py, lif_kernel.py</span></li>
+  <li><b>Spikes are summarised.</b> <code>accumulate</code> counts spikes per neuron and keeps MN9's spikes over the last 500 ms. MN9's rate is its spike count divided by 0.5 s. If that is 20 Hz or more, <code>eating</code> is true.</li>
+  <li><b>Broadcast.</b> Each 50 ms window becomes a <code>tick</code> for the dashboard (group rates, up to 500 spiking neuron IDs, game state). Every 4th tick also becomes a <code>status</code> for the phone. <span class="muted">server/app.py LiveBrain._loop</span></li>
+  <li><b>The dashboard reacts.</b> <code>state.js</code> sees <code>game.eating</code>, the fly switches to "eating" after holding for 150 ms (to stop flicker), extends its proboscis and pumps at a rate set by MN9's rate. The spiking neurons flash in the 3D brain. With sound on, each MN9 spike is a thump.</li>
+  <li><b>The phone vibrates</b> when <code>status.eating</code> goes from false to true.</li>
+</ol>
+
+<!-- ================================================================ 5 -->
+<h2 class="page"><span class="n">5</span>Inside the brain <span class="muted" style="font-weight:500;font-size:13pt">brain/</span></h2>
+
+<h3>Getting the data: <code>download_data.py</code></h3>
+<p>Every data file has a fixed source (a GitHub repository at a pinned commit) and a SHA-256 checksum in <code>brain/config.py</code>. The downloader fetches each file to <code>data/</code> and refuses it if the checksum differs. This guarantees everyone runs on byte-identical data.</p>
+<table>
+  <tr><th>File</th><th>What it holds</th></tr>
+  <tr><td><code>completeness_630.csv</code></td><td>The list of 127,400 neurons; row order = matrix index.</td></tr>
+  <tr><td><code>connectivity_630.parquet</code></td><td>14.7 million connections: presynaptic index, postsynaptic index, synapse count × sign.</td></tr>
+  <tr><td><code>shiu_figures.ipynb</code></td><td>The paper's notebook, where the sugar, bitter and MN9 IDs are read from.</td></tr>
+  <tr><td><code>shiu_result_sugarR_100Hz.parquet</code></td><td>The paper's own simulation results, used as a sanity target.</td></tr>
+  <tr><td><code>flywire_annotations_783.tsv</code></td><td>Neuron annotations: cell types (for photoreceptors) and 3D positions (for the dashboard).</td></tr>
+</table>
+
+<h3>The wiring: <code>connectome.py</code></h3>
+<p><code>load_connectome()</code> reads the two files into a <code>Connectome</code>: an array of IDs and three arrays describing each connection (<code>pre</code>, <code>post</code>, <code>signed_syn</code>). <code>weight_matrix(w_syn)</code> turns this into a <b>sparse matrix</b>, a table of 127,400 × 127,400 where only the 14.7 million non-zero entries are stored.</p>
+<div class="note">
+  <p><b>Worked example.</b> If neuron A makes 12 synapses onto neuron B and A is cholinergic (excitatory), the entry is +12 × 0.275 = +3.3 mV. If A were GABAergic, it would be −3.3 mV. When A spikes, B's g jumps by that amount 1.8 ms later. Rows are the <i>sending</i> neuron, so "everyone A talks to" is one contiguous row: fast to read when A spikes.</p>
+</div>
+<p><code>shuffle_connectome(conn, seed)</code> builds the control brain: every connection keeps its sender and weight, only the receiver is redrawn at random (no self-connections, no duplicate pairs).</p>
+
+<h3>Which neurons are which: <code>neuron_groups.py</code></h3>
+<p>The project never types a neuron ID into code. It parses the paper's notebook with Python's <code>ast</code> module to read the variables <code>neu_sugar</code>, <code>neu_bitter</code>, <code>id_mn9</code> and <code>ids_mn9</code> from the cells that made the paper's figures. The result goes to <code>data/neuron_groups.json</code>, with each group's source (file, cell, variable) recorded. A test checks every group is non-empty and every ID exists in the matrix.</p>
+<table>
+  <tr><th>Group</th><th class="num">Neurons</th><th>Role</th></tr>
+  <tr><td><span class="swatch" style="background:var(--sugar)"></span><code>sugar_grn</code></td><td class="num">21</td><td>Sugar taste input (right side of the labellum)</td></tr>
+  <tr><td><span class="swatch" style="background:var(--bitter)"></span><code>bitter_grn</code></td><td class="num">21</td><td>Bitter taste input</td></tr>
+  <tr><td><span class="swatch" style="background:var(--mn9)"></span><code>mn9_primary</code></td><td class="num">1</td><td>The MN9 used for every readout in the paper; decides <code>eating</code></td></tr>
+  <tr><td><code>mn9</code></td><td class="num">2</td><td>Both MN9 neurons</td></tr>
+  <tr><td><code>photoreceptor_R7</code>, <code>_R8</code></td><td class="num">286, 283</td><td>Found but only partly matched between releases; not used as input (full brain only)</td></tr>
+</table>
+
+<h3>The simulator: <code>simulator.py</code></h3>
+<p><code>LIFSimulator</code> holds the voltage <code>v</code> and input <code>g</code> of every neuron and advances them with <code>run(duration_ms)</code>. It keeps its state between calls, which is what lets the server run the brain forever in 50 ms chunks. Each 0.1 ms step does four things, in the same order as the Brian2 simulator the paper used:</p>
+<ol>
+  <li><b>Integrate.</b> Update v and g with the exact solution of the equations over one step (three multiplications per neuron). Refractory neurons stay frozen.</li>
+  <li><b>Threshold.</b> Every neuron with v above −45 mV that is not refractory spikes.</li>
+  <li><b>Deliver.</b> Spikes sent 18 steps (1.8 ms) ago arrive: for each, add its matrix row to g. Poisson input events add 68.75 mV to v. Anything arriving at a refractory neuron is discarded.</li>
+  <li><b>Reset.</b> Neurons that spiked go back to −52 mV with g = 0, and are frozen for the next 21 steps.</li>
+</ol>
+<p>Two subtle details were found by comparing against Brian2 step by step: input arriving during the refractory period must be <i>discarded</i> (keeping it made MN9 fire 19 to 32% too fast), and stimulated neurons have <i>no</i> refractory period, as in the paper's code.</p>
+
+<h3>Making it fast: <code>lif_kernel.py</code></h3>
+<p>The first NumPy version took 111 ms per 50 ms chunk on the full brain: 2.2 times too slow for real time. The cost was mostly Python overhead on 500 small steps, not arithmetic. <code>lif_kernel.py</code> is the same step written as plain loops and compiled to machine code by <b>numba</b>, running a whole chunk in one call and releasing Python's global lock so the server can keep talking while the brain runs. A test checks it produces bit-identical spikes, v and g to the NumPy version.</p>
+
+<h3>A smaller brain for live play: <code>reduced.py</code></h3>
+<p>Even compiled, the full brain takes about 67 ms per 50 ms chunk. So the live server runs a <b>reduced circuit</b>: every neuron that lies on a path of at most 5 connections from a sugar or bitter GRN to MN9, with all connections among them. Distances are found with breadth-first search forward from the GRNs (<code>d_out</code>) and backward from MN9 (<code>d_in</code>); a neuron is kept if <code>d_out + d_in ≤ 5</code>.</p>
+<table>
+  <tr><th></th><th class="num">Full brain</th><th class="num">Reduced circuit</th></tr>
+  <tr><td>Neurons</td><td class="num">127,400</td><td class="num">19,698 (15.5%)</td></tr>
+  <tr><td>Connections</td><td class="num">14,687,178</td><td class="num">2,415,250 (16.4%)</td></tr>
+  <tr><td>Wall time per 50 ms chunk (mean)</td><td class="num">66.7 ms</td><td class="num">8.4 ms</td></tr>
+  <tr><td>MN9 with sugar (5 seeds)</td><td class="num">85.8 Hz</td><td class="num">84.2 Hz (−1.9%)</td></tr>
+  <tr><td>MN9 with sugar + bitter</td><td class="num">9.6 Hz</td><td class="num">identical on all 5 seeds</td></tr>
+</table>
+<p>The cut-off of 5 hops was chosen on a design seed that is not one of the validation seeds, so the choice could not be tuned to pass the tests.</p>
+
+<h3>Where each neuron sits: <code>positions.py</code></h3>
+<p>For the 3D view, positions come from the FlyWire annotation table (columns <code>pos_x, pos_y, pos_z</code>, in 4 × 4 × 40 nm voxels, converted to micrometres). That table uses release 783, while the brain uses 630. A neuron ID names one fixed reconstruction, so an ID found in both releases is the same neuron. Neurons edited between releases got new IDs; those have no position and are simply not drawn. That leaves 17,101 of the 19,698 reduced-circuit neurons placed. Nothing is guessed.</p>
+
+<h3>The experiments: <code>validate.py</code>, <code>validate_reduced.py</code></h3>
+<p>These run the Phase 1 and Phase 2 experiments (section 9) and write their results to <code>data/</code>. Pass/fail thresholds live in <code>brain/config.py</code> and were set before the first run.</p>
+
+<!-- ================================================================ 6 -->
+<h2 class="page"><span class="n">6</span>Inside the server <span class="muted" style="font-weight:500;font-size:13pt">server/</span></h2>
+
+<h3>The live brain: <code>brain_runner.py</code></h3>
+<p><code>BrainRunner</code> owns the simulator and translates between the game and the brain. It has no opinion about behavior; its docstring says so.</p>
+<ul>
+  <li><b>Events.</b> <code>handle_event</code> validates each phone message. <code>sugar</code> and <code>bitter</code> set a timer (default 2 s, at most 10 s; a new tap extends, never shortens). <code>light</code> stores a level from 0 to 1. <code>stop</code> ends stimuli. <code>ping</code> answers with <code>pong</code> so the phone can measure its round trip.</li>
+  <li><b>Inputs.</b> <code>apply_inputs</code> runs before each chunk and sets each input group's rate to 150 Hz or 0 from its timer.</li>
+  <li><b>The eating readout.</b> <code>accumulate</code> keeps MN9's spike counts for the last 500 ms; <code>readout_rate_hz</code> turns them into a rate; <code>game_state</code> sets <code>eating = rate ≥ 20 Hz</code>. The 20 Hz line is the same one used to validate the model in Phase 1.</li>
+  <li><b>Summaries.</b> <code>make_tick</code> builds the dashboard message: spike counts and rates per group, the total, up to 500 randomly sampled spiking neuron IDs, input rates, game state and timing.</li>
+</ul>
+
+<h3>The loop and the connections: <code>app.py</code></h3>
+<p><code>LiveBrain._loop</code> is an endless async loop: apply inputs, run a chunk on a worker thread, summarise, broadcast, then sleep until the next 50 ms mark of wall-clock time. If it falls more than 250 ms behind (a slow laptop), it drops the backlog instead of bursting to catch up.</p>
+<p>Each WebSocket client gets its own small queue of 8 messages. If a client is slow, the oldest message in <i>its</i> queue is dropped, so one lagging browser never slows the brain or the other clients. The <code>Hub</code> keeps the clients by role, <code>phone</code> or <code>dashboard</code>.</p>
+<table>
+  <tr><th>Endpoint</th><th>Purpose</th></tr>
+  <tr><td><code>/ws/phone</code></td><td>Phone sends <code>sugar</code>, <code>bitter</code>, <code>light</code>, <code>stop</code>, <code>ping</code>; receives <code>hello</code>, <code>ack</code>, <code>status</code> (5 Hz)</td></tr>
+  <tr><td><code>/ws/dashboard</code></td><td>Dashboard sends <code>ping</code>, <code>reset_brain</code>; receives <code>hello</code>, <code>tick</code> (20 Hz)</td></tr>
+  <tr><td><code>/dashboard/</code>, <code>/phone/</code></td><td>The two pages (<code>server/dashboard.py</code>, <code>server/web.py</code>)</td></tr>
+  <tr><td><code>/api/positions</code></td><td>Neuron positions for the 3D brain</td></tr>
+  <tr><td><code>/api/phone-url</code>, <code>/api/qr.svg</code></td><td>The address a phone should open (ngrok tunnel, else the laptop's Wi-Fi address) and its QR code</td></tr>
+  <tr><td><code>/health</code>, <code>/api/brain</code></td><td>Status and the static brain description</td></tr>
+</table>
+
+<h3>The messages</h3>
+<p>Every message is JSON and documented in <code>reports/MESSAGE_FORMAT.md</code>. Here is a real <code>tick</code> from the recorded session, taken while the fly was eating (the list of spiking IDs is cut short):</p>
+<pre>{{TICK_JSON}}</pre>
+<p>The <code>hello</code> sent on connect describes the brain: its size, the neuron IDs of each group, the input rates, and how eating is read out (group, 20 Hz threshold, 500 ms window), so the dashboard can draw the real threshold instead of copying a number.</p>
+
+<h3>Tools</h3>
+<table>
+  <tr><th style="width:55mm">Command</th><th>What it does</th></tr>
+  <tr><td><code>python -m server</code></td><td>Starts everything (<code>--brain full</code>, <code>--certfile</code>/<code>--keyfile</code> for HTTPS, <code>--public-url</code>)</td></tr>
+  <tr><td><code>python -m server.fake_phone --spawn</code></td><td>Plays a scripted phone session and checks MN9 goes up with sugar, down with bitter, to zero after stop</td></tr>
+  <tr><td><code>python -m server.record_session --spawn</code></td><td>Records real server output to <code>web/dashboard/samples/session.jsonl</code> for replays and tests</td></tr>
+  <tr><td><code>python -m server.phone_page_check --spawn</code></td><td>Runs the real phone logic in Node against the live brain with mock tap, shake and camera</td></tr>
+  <tr><td><code>python -m server.validate_dashboard</code></td><td>Opens the dashboard in headless Chrome, replays the sample and drives a live session, checks frame rate, lag and errors</td></tr>
+</table>
+
+<!-- ================================================================ 7 -->
+<h2><span class="n">7</span>The phone page <span class="muted" style="font-weight:500;font-size:13pt">web/phone/</span></h2>
+<div class="two">
+  <div>
+    <p>The phone page is plain HTML and JavaScript. Its logic is split in two so it can be tested without a phone:</p>
+    <ul>
+      <li><code>controller.js</code> holds every decision, with no browser APIs: the shake detector, the camera brightness math, when to send light updates, what to show, when to vibrate, how long to wait before reconnecting. The Node tests import this exact file.</li>
+      <li><code>phone.js</code> is the glue to the browser: the WebSocket, touch events, the iOS motion permission, the camera, vibration and keeping the screen awake.</li>
+    </ul>
+    <h4>Tap → sugar</h4>
+    <p>The yellow zone fills most of the screen and fires on <code>pointerdown</code> for no delay.</p>
+    <h4>Shake → bitter</h4>
+    <p>The phone reports its acceleration many times a second. If it can only report acceleration including gravity, a slow low-pass filter estimates gravity and subtracts it. The detector then counts peaks above 15 m/s². Three peaks within 800 ms is a shake; a 1.5 s cooldown stops one long shake from counting many times. Walking, rest and a single jolt are not shakes (tested).</p>
+  </div>
+  <figure style="margin:0">
+    <img class="shot" src="phone_eating.png" alt="The phone page while the fly eats" style="max-width:62mm;margin:0 auto">
+    <figcaption>The phone page, from the automated browser test, just after a tap: "Eating!", MN9 at 88 Hz.</figcaption>
+  </figure>
+</div>
+<h4>Covering the camera → dark</h4>
+<p>Four times a second, the front camera's frame is shrunk to 32 × 24 pixels and its average brightness computed (0 = black, 1 = white). The page sends <code>{"type":"light","level":…}</code> when the level moves by 0.05 or more, or every 2 seconds. Light is a game input only: the model's photoreceptors could not be matched reliably between data releases (section 11).</p>
+<h4>iPhone quirks</h4>
+<p>iOS Safari only allows motion sensors and the camera on <b>HTTPS</b> pages, and only asks for motion permission from inside a button tap. So the page has one "Enable shake + camera" button, and the server supports HTTPS with a certificate or an ngrok tunnel. The dashboard's QR code picks up a running ngrok tunnel automatically.</p>
+
+<!-- ================================================================ 8 -->
+<h2 class="page"><span class="n">8</span>The dashboard <span class="muted" style="font-weight:500;font-size:13pt">web/dashboard/</span></h2>
+<p>The dashboard is a set of small JavaScript modules with no build step. <code>main.js</code> wires them together and runs one animation loop (<code>requestAnimationFrame</code>, up to 60 times a second) that draws whatever the latest server message says.</p>
+
+<table>
+  <tr><th style="width:36mm">Module</th><th>Job</th></tr>
+  <tr><td><code>source.js</code></td><td>Where messages come from: the live WebSocket, or a recorded session played back (<code>?replay=samples/session.jsonl</code>).</td></tr>
+  <tr><td><code>state.js</code></td><td>Pure state, no drawing: applies each message, keeps 10 s of rates for the chart, decides the fly's state, counts gulps. Tested in Node on the recorded session.</td></tr>
+  <tr><td><code>fly3d.js</code>, <code>fly_motion.js</code></td><td>The 3D fly. <code>fly_motion.js</code> holds the poses and the rules for motion (tested); <code>fly3d.js</code> builds and animates the model with three.js.</td></tr>
+  <tr><td><code>brain3d.js</code></td><td>The 3D brain: 17,101 points at their real positions; spiking neurons flash and fade over 300 ms, colored by group.</td></tr>
+  <tr><td><code>chart.js</code></td><td>The firing-rate chart for the last 10 s of sugar GRNs, bitter GRNs and MN9, with bands showing when each input was on.</td></tr>
+  <tr><td><code>sound.js</code></td><td>"Hear the brain".</td></tr>
+  <tr><td><code>phone_link.js</code></td><td>The QR code panel.</td></tr>
+  <tr><td><code>config.js</code></td><td>Every display setting.</td></tr>
+</table>
+
+<h3>How the fly's state is decided</h3>
+<p><code>deriveFlyState</code> in <code>state.js</code> checks, in order, and the first match wins:</p>
+<ol>
+  <li><b>eating</b> if <code>tick.game.eating</code> is true (the server's MN9 readout);</li>
+  <li><b>disgusted</b> if the bitter GRNs fire at 20 Hz or more in this tick;</li>
+  <li><b>resting</b> if the light level is 0.3 or lower;</li>
+  <li><b>idle</b> otherwise.</li>
+</ol>
+<p>A new state has to hold for 150 ms before the fly changes, which stops it flickering on a single noisy tick. Note the order: if sugar and bitter are both on and MN9 still crosses 20 Hz, the fly eats. The brain decides, not the priority list.</p>
+
+<div class="two">
+  <figure><div class="crop" style="aspect-ratio: 818/517;"><img src="dash_disgusted.png" style="width:173.3%;margin:-8.1% 0 0 -2.4%" alt="Disgusted"></div><figcaption>Disgusted: bitter neurons at 143 Hz, MN9 silent. The fly recoils, buzzes its wings and rubs its front legs.</figcaption></figure>
+  <figure><div class="crop" style="aspect-ratio: 818/517;"><img src="dash_resting.png" style="width:173.3%;margin:-8.1% 0 0 -2.4%" alt="Resting"></div><figcaption>Resting: the phone's camera is covered. The dish dims and the fly settles (a game rule, and the page says so).</figcaption></figure>
+</div>
+
+<h3>The 3D fly</h3>
+<p>The fly is built from simple shapes in code, so there is no model file to download: stretched spheres for the head and thorax, a lathe (a profile spun around an axis) for the tapered abdomen, flat shapes with drawn veins for the wings, and three segments per leg. Textures such as the compound eye's hexagonal facets and the abdomen's dark bands are painted onto small canvases at startup. It stands at true scale next to a 1 mm scale bar (a female Drosophila is about 2.5 mm long).</p>
+<ul>
+  <li><b>Eating:</b> the proboscis swings forward to the drop and pumps. The pump rate is MN9's rate divided by 14, kept between 2 and 8 pumps a second, so a harder-firing MN9 visibly drinks faster. The belly slowly swells while it eats.</li>
+  <li><b>Disgusted:</b> head recoil, buzzing wings, front legs wiping, purple puffs.</li>
+  <li><b>Resting:</b> the lights dim, the body lowers, antennae droop, "z"s float up.</li>
+  <li><b>Idle:</b> breathing, glances, an occasional wing flick, and every 7 s a leg-rubbing groom.</li>
+</ul>
+<p><b>Quality levels.</b> Drawing shadows and reflections is cheap on a graphics card but expensive when the computer has to draw every pixel in software. The fly checks which renderer the browser uses. On a real GPU it uses full quality (measured at 59.9 frames per second on the development laptop). On a software renderer it drops antialiasing, shadows and reflections, draws at 0.6× resolution and at most 20 times a second. If full quality turns out too slow, it steps down by itself. If three.js cannot load at all, a 2D cartoon fly takes over.</p>
+
+<h3>Why it's doing that</h3>
+<p>Below the stage, three meters show the sugar GRNs, the bitter GRNs and MN9, with a line on the MN9 meter at the eating threshold (read from the server's <code>hello</code>), and one sentence explaining the current state. This is the panel to point at when someone asks "but is it really the brain?".</p>
+
+<h3>Hear the brain</h3>
+<p>Neuroscientists often listen to their recordings: an electrode's signal played through a speaker turns each spike into a click. <code>sound.js</code> does the same with the model's spikes using the browser's Web Audio API. For each tick, <code>planTick</code> (a pure, tested function) decides what to play from the spike counts, and the sounds are scattered across the next 50 ms:</p>
+<ul>
+  <li><span class="swatch" style="background:var(--mn9)"></span>each MN9 spike is a deep thump (so eating sounds like a pump);</li>
+  <li><span class="swatch" style="background:var(--sugar)"></span>sugar GRN activity is bright plucked notes, higher when they fire faster;</li>
+  <li><span class="swatch" style="background:var(--bitter)"></span>bitter GRN activity is a low buzz;</li>
+  <li>every other spiking neuron adds soft clicks, the "crackle" of the rest of the brain;</li>
+  <li>a gulp when eating starts and a "blech" when disgust starts.</li>
+</ul>
+<p>Each sound type has a cap per tick so a busy brain doesn't turn into noise. With background noise off, a brain at rest makes no spikes, so a resting fly is silent: the silence is real too.</p>
+
+<!-- ================================================================ 9 -->
+<h2><span class="n">9</span>How we know it works</h2>
+<p>A simulation can look convincing and still be wrong. The project builds a chain of evidence where each link is checked by an automated test or a validation script, with pass/fail thresholds written into config <i>before</i> the first run.</p>
+
+<h3>The chain of evidence</h3>
+<ol>
+  <li><b>Same maths as the paper.</b> On a 300-neuron test network with fixed input, the simulator produces the same 14,834 spikes, spike for spike, as the paper's own code running in Brian2. <code>tests/test_simulator.py</code></li>
+  <li><b>Fast version = slow version.</b> The numba kernel gives bit-identical spikes, v and g to the NumPy version, including with noise and rate changes mid-run.</li>
+  <li><b>The full brain reproduces the paper.</b> Sugar at 100 Hz: our MN9 68.4 ± 4.6 Hz vs the paper's 67.0 ± 6.7 Hz. Across every active neuron our rates correlate with theirs at r = 0.998.</li>
+  <li><b>The behavior is real, and the control fails.</b> The chart below.</li>
+  <li><b>The reduced circuit matches the full brain</b> within 2% (sugar) and exactly (sugar + bitter), and all 5 shuffled versions of it fail.</li>
+  <li><b>The server passes the brain through faithfully.</b> Server tests with a small synthetic brain check events, timers, readouts and message formats; the fake phone checks MN9 rises and falls on the real circuit.</li>
+  <li><b>The pages work.</b> Node tests of the phone logic (16) and the dashboard logic (24), a real-browser test of the phone page (11 checks) and the dashboard validator (15 checks: every recorded tick applied, all four fly states shown, the 3D fly drawn, 20 ticks a second with no loss, ≥ 30 frames a second, no JavaScript errors).</li>
+</ol>
+
+<figure>
+  {{BARS_SVG}}
+  <figcaption>MN9 firing rate in 1-second trials, mean ± SD over 5 random seeds, 150 Hz input to the stimulated taste neurons, full 127,400-neuron brain. The real wiring feeds on sugar and stops when bitter is added (89% lower). The shuffled brain, with the same neurons, connection count and weights, never makes MN9 fire. Source: reports/PHASE_1_REPORT.md.</figcaption>
+</figure>
+
+<table>
+  <tr><th>Check</th><th>Threshold (set before the run)</th><th class="num">Result</th></tr>
+  <tr><td>Sugar drives MN9</td><td>≥ 20 Hz</td><td class="num">85.8 Hz</td></tr>
+  <tr><td>Bitter reduces MN9</td><td>≥ 25% drop and &gt; 2 pooled SD</td><td class="num">89% drop</td></tr>
+  <tr><td>Shuffled brain doesn't feed</td><td>MN9 ≤ 5 Hz</td><td class="num">0.0 Hz</td></tr>
+  <tr><td>Matches the paper's own result</td><td>within ±25%</td><td class="num">+2%</td></tr>
+  <tr><td>Reduced circuit matches full brain</td><td>within 10%</td><td class="num">−1.9% / 0.0%</td></tr>
+  <tr><td>Reduced circuit speed per 50 ms</td><td>mean and p95 &lt; 35 ms</td><td class="num">8.4 / 12.1 ms</td></tr>
+  <tr><td>Tap to eating on the phone</td><td>under ~300 ms (plan target)</td><td class="num">116–251 ms</td></tr>
+</table>
+<p class="small muted">The shuffled brain is not dead: sugar still drives 91 downstream neurons in it. The activity just never finds its way to MN9. In the real brain, 349 downstream neurons fire.</p>
+
+<!-- ================================================================ 10 -->
+<h2 class="page"><span class="n">10</span>Running it and changing it</h2>
+<h3>First time</h3>
+<pre>python -m venv .venv
+.venv\Scripts\activate            (macOS/Linux: source .venv/bin/activate)
+pip install -r requirements.txt
+python -m brain.download_data     # ~120 MB, checksummed
+python -m brain.neuron_groups     # writes data/neuron_groups.json
+python -m brain.reduced           # writes data/reduced_circuit.json</pre>
+<h3>Every time</h3>
+<pre>python -m server                  # then open http://localhost:8000/ on the laptop
+ngrok http 8000                   # in a second terminal, for HTTPS on the iPhone</pre>
+<p>Scan the dashboard's QR code with the iPhone, tap "Enable shake + camera", and play. Without ngrok, tapping still works over the laptop's Wi-Fi address; shake and camera need HTTPS.</p>
+<h3>Checking everything</h3>
+<pre>pytest -q                                  # 77 tests (needs Node.js 22+ for the JS tests)
+python -m brain.validate                   # Phase 1 experiments, full brain (slow)
+python -m brain.validate_reduced           # Phase 2 experiments
+python -m server.validate_dashboard        # dashboard in headless Chrome</pre>
+
+<h3>Where to change what</h3>
+<table>
+  <tr><th style="width:62mm">To change…</th><th>Edit</th></tr>
+  <tr><td>How long one tap gives sugar</td><td><code>server/config.py</code> <code>default_stimulus_ms</code> (2000)</td></tr>
+  <tr><td>How strongly taste neurons are driven</td><td><code>server/config.py</code> <code>input_rate_hz</code> (150 Hz, the paper's default)</td></tr>
+  <tr><td>What counts as eating</td><td><code>server/config.py</code> <code>eating_threshold_hz</code>, <code>eating_window_ms</code></td></tr>
+  <tr><td>Run the full brain instead</td><td><code>python -m server --brain full</code> (slower than real time)</td></tr>
+  <tr><td>Shake sensitivity, camera rate</td><td><code>server/config.py</code> <code>PhoneConfig</code></td></tr>
+  <tr><td>When the fly looks disgusted or rests</td><td><code>web/dashboard/config.js</code> <code>disgustBitterHz</code>, <code>darkLevel</code></td></tr>
+  <tr><td>Fly animation, quality, sound volume</td><td><code>web/dashboard/config.js</code> <code>fly3d</code>, <code>sound</code></td></tr>
+  <tr><td>Model parameters</td><td><code>brain/config.py</code> <code>LIFParams</code>: only with a source to cite</td></tr>
+</table>
+<div class="note"><p><b>Working rules worth keeping</b> (from <code>CLAUDE.md</code>): never loosen a test threshold or delete a test to make it pass; set thresholds before the first run; never hard-code a guessed neuron ID; cite a source for every model parameter; label every game rule as a game rule.</p></div>
+
+<!-- ================================================================ 11 -->
+<h2><span class="n">11</span>Limits and open questions</h2>
+<ul>
+  <li><b>A model is not a fly.</b> The connectome gives wiring only. Connection strength is estimated from synapse counts, and excitation or inhibition from a <i>predicted</i> neurotransmitter. Every neuron uses the same LIF parameters, which real neurons don't.</li>
+  <li><b>The fly cannot learn.</b> The wiring is fixed; nothing in the model changes with experience.</li>
+  <li><b>The live brain is a subset.</b> The reduced circuit keeps paths of up to 5 connections between taste and MN9. It matches the full brain on the feeding experiments, but it leaves out most of the brain.</li>
+  <li><b>Light is not a brain input.</b> Photoreceptors exist in the data, but only partly: of the R7 and R8 photoreceptors annotated in release 783, only 286 and 283 have unchanged IDs in release 630. Wiring a partial eye into the model would be guesswork, so darkness is a game rule for now.</li>
+  <li><b>No background activity.</b> Every level of random background noise tried either did nothing visible or eventually set off a self-sustaining runaway in the model, so noise is off. The brain is silent at rest.</li>
+  <li><b>Not yet tested on a real iPhone.</b> Everything short of that passes (mock sensors, a real headless browser, HTTPS). Shake sensitivity and camera thresholds will need tuning on a device (Phase 6).</li>
+  <li><b>Two "dark" thresholds.</b> The phone page labels light below 0.15 "dark"; the dashboard rests the fly at 0.3 or below. Which one is right is a decision still open.</li>
+  <li><b>The mood bars are placeholders</b> until Phase 5.</li>
+</ul>
+
+<!-- ================================================================ 12 -->
+<h2><span class="n">12</span>Things to try, and a glossary</h2>
+<h3>Things to try</h3>
+<ol>
+  <li><b>Sugar, then sugar and bitter.</b> Tap, watch MN9 cross the line. Then tap and shake together: sugar neurons still fire hard, yet MN9 stays low. Nothing in the code says bitter beats sugar; watch the "why" panel.</li>
+  <li><b>Listen.</b> Turn on "Hear the brain" and tap. The thumps are MN9. Count them against the meter.</li>
+  <li><b>Replay a session</b> at 4× speed: <code>/dashboard/?replay=samples/session.jsonl&amp;speed=4</code>.</li>
+  <li><b>Change the input rate</b> in <code>server/config.py</code> to 100 Hz and restart. MN9 should drop to about 68 Hz, as in the paper.</li>
+  <li><b>Try the full brain</b> with <code>--brain full</code> and watch the lag counter at the bottom of the dashboard.</li>
+  <li><b>Read one test.</b> <code>tests/test_behavior.py</code> is short and says exactly what "the model works" means.</li>
+</ol>
+
+<h3>Glossary</h3>
+<table class="long">
+  <tr><td style="width:40mm"><b>Brian2</b></td><td>The neural-simulation library the paper's code uses. This project reimplements the same model without it, and checks against it.</td></tr>
+  <tr><td><b>Chunk</b></td><td>50 ms of simulated time, run in one go. The server runs one chunk every 50 ms of real time.</td></tr>
+  <tr><td><b>Connectome</b></td><td>A complete map of neurons and their connections.</td></tr>
+  <tr><td><b>CSR / sparse matrix</b></td><td>A way to store a huge table that is mostly zeros by keeping only the non-zero entries, row by row.</td></tr>
+  <tr><td><b>FlyWire</b></td><td>The project that reconstructed the adult fruit fly brain. Releases (630, 783) are versions of that reconstruction.</td></tr>
+  <tr><td><b>GRN</b></td><td>Gustatory receptor neuron: a taste-sensing neuron.</td></tr>
+  <tr><td><b>Hz</b></td><td>Per second. A firing rate of 20 Hz is 20 spikes per second.</td></tr>
+  <tr><td><b>LIF</b></td><td>Leaky integrate-and-fire: a neuron model that adds up input, leaks toward rest and spikes at a threshold.</td></tr>
+  <tr><td><b>MN9</b></td><td>A motor neuron that drives the fly's feeding pump. Its firing is the "eating" readout.</td></tr>
+  <tr><td><b>numba</b></td><td>A Python tool that compiles numeric loops to machine code.</td></tr>
+  <tr><td><b>Poisson input</b></td><td>Random input events at a given average rate, independent from moment to moment.</td></tr>
+  <tr><td><b>Proboscis</b></td><td>The fly's extendable mouthpart, which tastes and drinks.</td></tr>
+  <tr><td><b>Reduced circuit</b></td><td>The 19,698-neuron part of the brain on short paths from taste to MN9, used for live play.</td></tr>
+  <tr><td><b>Refractory period</b></td><td>The 2.2 ms after a spike during which a neuron cannot spike again.</td></tr>
+  <tr><td><b>Shuffled brain</b></td><td>A control: same neurons and weights, connections pointed at random targets.</td></tr>
+  <tr><td><b>Tick</b></td><td>One dashboard message summarising a 50 ms window.</td></tr>
+  <tr><td><b>WebSocket</b></td><td>A connection between browser and server that stays open, so both can send messages at any time.</td></tr>
+</table>
+<p class="small muted" style="margin-top:6mm">Reference: Shiu, P.K., Sterne, G.R., Spiller, N. et al. A Drosophila computational brain model reveals sensorimotor processing. <i>Nature</i> 634, 210–219 (2024). Code: github.com/philshiu/Drosophila_brain_model. Connectome: FlyWire (Dorkenwald et al., Schlegel et al., <i>Nature</i> 2024).</p>
+
+</body>
+</html>

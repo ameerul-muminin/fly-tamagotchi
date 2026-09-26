@@ -4,3 +4,4 @@ __pycache__/
 .pytest_cache/
 *.part
 certs/
+reports/guide/guide_built.html

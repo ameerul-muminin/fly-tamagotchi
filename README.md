@@ -3,6 +3,9 @@
 A virtual fruit fly whose feeding comes from a simulated connectome. See `PLAN.md`
 for the project and `CLAUDE.md` for working rules.
 
+New here? `reports/FLY_TAMAGOTCHI_GUIDE.pdf` explains the science and every part of the code
+(rebuild it with `python reports/guide/build_guide.py`).
+
 ## Setup
 
 ```bash
