@@ -1,5 +1,5 @@
 // Wires a message source to the state, the fly, the meters, the mood bars, the chart,
-// the 3D brain and the brain sounds.
+// the 3D brain (selection chips, neuron tooltip, L/R labels) and the brain sounds.
 // URL options: ?replay=samples/session.jsonl&speed=1&loop=1  (default: live server)
 
 import { CONFIG } from "./config.js";
@@ -8,12 +8,16 @@ import { createFly } from "./fly.js";
 import { ActivityChart } from "./chart.js";
 import { LiveSource, ReplaySource } from "./source.js";
 import { BrainSound } from "./sound.js";
+import { stimulatedGroups, sideLabels, neuronTitle, selectionText } from "./brain_logic.js";
 
 const $ = (sel) => document.querySelector(sel);
 const params = new URLSearchParams(location.search);
 const state = new DashboardState();
-// The 2D fly shows at once; the 3D fly replaces it when three.js has loaded.
+// The 2D fly shows at once. The flybody model replaces it once three.js and
+// /api/fly_model.glb load; the simple 3D fly (fly3d.js) is the fallback without the model.
 let fly = createFly($("#fly"));
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+for (const [k, v] of Object.entries(CONFIG.brain.colors)) document.documentElement.style.setProperty(`--c-${k}`, v);
 const sound = new BrainSound();
 const chart = new ActivityChart($("#chart"), $("#chart-tip"));
 
@@ -40,7 +44,9 @@ addEventListener("unhandledrejection", (e) => perf.jsErrors.push(String(e.reason
 
 let brain = null;
 let positions = null;
+let atlas = null;
 let lastDrawnSeq = null;
+let selection = "all";
 
 function setConn(text) {
   const el = $("#conn");
@@ -70,43 +76,215 @@ function onMessage(msg) {
 }
 
 async function loadPositions() {
-  const res = await fetch(CONFIG.positionsPath);
-  if (!res.ok) throw new Error(`positions: HTTP ${res.status}`);
-  positions = await res.json();
+  const need = (r, what) => (r.ok ? r : Promise.reject(new Error(`${what}: HTTP ${r.status}`)));
+  const [pos, head, bin] = await Promise.all([
+    fetch(CONFIG.positionsPath).then((r) => need(r, "positions").json()),
+    fetch("/api/atlas").then((r) => need(r, "atlas").json()),
+    fetch("/api/atlas.bin").then((r) => need(r, "atlas").arrayBuffer()),
+  ]);
+  positions = pos;
+  atlas = { header: head, xyz: new Int16Array(bin) };
   const unplaced = Object.entries(positions.groups_unplaced).filter(([, v]) => v.length);
   $("#brain-note").textContent =
-    `${positions.n_placed.toLocaleString()} of ${positions.n_neurons.toLocaleString()} neurons have a position ` +
-    `(FlyWire v630 IDs unchanged in the v783 annotations); the rest are not drawn.` +
+    `Brain view: all ${head.n.toLocaleString()} neurons with a position in the FlyWire annotations are drawn; ` +
+    `the ${positions.n_placed.toLocaleString()} simulated ones (of ${positions.n_neurons.toLocaleString()}; FlyWire v630 IDs ` +
+    `unchanged in v783) can light up, the rest are anatomy only.` +
     (unplaced.length ? ` Unplaced in groups: ${unplaced.map(([g, v]) => `${g} ${v.length}`).join(", ")}.` : "") +
-    ` Only a sample of up to 500 spiking neurons per tick is sent.`;
+    " Up to 500 spiking neurons are sent per tick. Hover a neuron for its FlyWire annotation.";
   buildBrainView();
 }
 
 async function buildBrainView() {
-  if (brain || !positions || !state.brain) return;
+  if (brain || !positions || !atlas || !state.brain) return;
   try {
-    const { BrainView } = await import("./brain3d.js");
+    const [{ BrainView }, { detectQuality }] = await Promise.all([import("./brain3d.js"), import("./fly3d.js")]);
     if (brain) return;
-    brain = new BrainView($("#brain3d"), positions, (id) => state.colorGroup(id));
-    perf.pointsDrawn = brain.n;
+    const groups = Object.fromEntries(Object.entries(state.brain.groups).map(([g, v]) => [g, v.ids]));
+    const quality = params.get("quality") ?? detectQuality();
+    brain = new BrainView($("#brain3d"), positions, atlas, groups, CONFIG, quality);
+    perf.pointsDrawn = brain.nDrawn;
     $("#brain-msg").remove();
     state.takeSpikes(); // don't flash the backlog from before the view existed
+    buildSelector();
+    setSelection(selection);
+    wireBrainHover();
+    $("#label-l").hidden = $("#label-r").hidden = false;
   } catch (err) {
     $("#brain-msg").textContent = `3D view unavailable: ${err.message}. (three.js loads from cdn.jsdelivr.net.)`;
     perf.jsErrors.push(`brain3d: ${err.message}`);
   }
 }
 
+// ---- brain selection chips ("All", "Sugar", "Bitter", "MN9") ----
+function buildSelector() {
+  const seg = $("#brain-select");
+  for (const opt of CONFIG.brainSelections) {
+    if (opt.key !== "all" && !state.brain.groups[opt.key]) continue;
+    const b = document.createElement("button");
+    b.type = "button";
+    b.setAttribute("role", "radio");
+    b.dataset.key = opt.key;
+    b.textContent = opt.label;
+    b.setAttribute("aria-checked", String(opt.key === selection));
+    b.addEventListener("click", () => setSelection(opt.key));
+    seg.appendChild(b);
+  }
+}
+
+function setSelection(key) {
+  selection = key;
+  const n = brain?.setSelection(key) ?? 0;
+  setText("#brain-count", selectionText(key, brain?.nSim ?? 0, brain?.nAtlas ?? 0, { [key]: n }));
+  for (const b of document.querySelectorAll("#brain-select button")) {
+    b.setAttribute("aria-checked", String(b.dataset.key === key));
+  }
+  moveIndicator($("#brain-select .seg-thumb"), $(`#brain-select button[data-key="${key}"]`), "thumb");
+}
+
+/** Slide a segment thumb / tab underline under `btn` (transform, plus width for the thumb). */
+function moveIndicator(el, btn, kind) {
+  if (!el || !btn) return;
+  if (kind === "thumb") {
+    el.style.width = `${btn.offsetWidth}px`;
+    el.style.transform = `translateX(${btn.offsetLeft}px)`;
+  } else {
+    el.style.transform = `translateX(${btn.offsetLeft + 8}px) scaleX(${btn.offsetWidth - 16})`;
+  }
+}
+
+// ---- hover: the FlyWire annotation of the neuron under the pointer ----
+const neuronInfo = new Map();
+const MEMBER = { mn9_primary: "MN9", sugar_grn: "sugar taste neuron", bitter_grn: "bitter taste neuron" };
+
+function wireBrainHover() {
+  const host = $("#brain3d");
+  const tip = $("#neuron-tip");
+  const ring = $("#hover-ring");
+  let pending = null;
+  let current = -1;
+  const hide = () => {
+    tip.hidden = true;
+    ring.hidden = true;
+    current = -1;
+  };
+  const show = async (hit) => {
+    ring.hidden = false;
+    ring.style.left = `${hit.x}px`;
+    ring.style.top = `${hit.y}px`;
+    if (hit.atlasIndex === current && !tip.hidden) return;
+    current = hit.atlasIndex;
+    let info = neuronInfo.get(hit.atlasIndex);
+    if (!info) {
+      try {
+        info = await (await fetch(`/api/atlas/neuron/${hit.atlasIndex}`)).json();
+      } catch {
+        return;
+      }
+      neuronInfo.set(hit.atlasIndex, info);
+      if (current !== hit.atlasIndex) return; // the pointer moved on meanwhile
+    }
+    $("#tip-title").textContent = neuronTitle(info);
+    $("#tip-nt").textContent = info.top_nt ?? "transmitter unknown";
+    $("#tip-id").textContent = `FlyWire ID ${info.root_id}`;
+    const status = $("#tip-status");
+    const c = CONFIG.brain.colors;
+    if (info.simulated) {
+      const act = brain.activity(info.root_id);
+      const g = state.brain.groups;
+      const member = Object.entries(MEMBER).find(([k]) => g[k]?.ids.includes(info.root_id))?.[1];
+      status.textContent = `${act.firing ? "Firing" : act.stimulated ? "Stimulated" : "Simulated"}${member ? ` · ${member}` : ""}`;
+      status.style.setProperty("--dot", act.firing ? c.firing : act.stimulated ? c.stimulated : c.resting);
+    } else {
+      status.textContent = "Not in the simulated circuit";
+      status.style.setProperty("--dot", c.backdrop);
+    }
+    // Right-below the ring; flipped to the left near the right edge.
+    const r = host.getBoundingClientRect();
+    const w = 230;
+    const left = hit.x + 18 + w > r.width ? hit.x - 18 - w : hit.x + 18;
+    tip.style.left = `${Math.max(8, left)}px`;
+    tip.style.top = `${Math.max(8, Math.min(hit.y + 14, r.height - 110))}px`;
+    tip.style.transformOrigin = left < hit.x ? "top right" : "top left";
+    if (tip.hidden) {
+      // Enter once (125 ms); moving on to the next neuron updates it instantly.
+      tip.classList.add("entering");
+      tip.hidden = false;
+      requestAnimationFrame(() => tip.classList.remove("entering"));
+    }
+  };
+  host.addEventListener("pointermove", (e) => {
+    if (e.buttons || e.pointerType === "touch") return hide(); // dragging turns the brain
+    const r = host.getBoundingClientRect();
+    const x = e.clientX - r.left;
+    const y = e.clientY - r.top;
+    if (pending) cancelAnimationFrame(pending);
+    pending = requestAnimationFrame(() => {
+      pending = null;
+      const hit = brain.pick(x, y);
+      if (hit) show(hit);
+      else hide();
+    });
+  });
+  host.addEventListener("pointerleave", hide);
+  host.addEventListener("pointerdown", hide);
+}
+
 function legend() {
-  const items = [
-    ["sugar_grn", "Sugar taste neurons"],
-    ["bitter_grn", "Bitter taste neurons"],
-    ["mn9_primary", "MN9 feeding motor neuron"],
-    ["other", "Other spiking neurons"],
-  ];
-  $("#legend").innerHTML = items
-    .map(([g, label]) => `<li><i style="background:${CONFIG.colors[g]}"></i>${label}</li>`)
+  const c = CONFIG.brain.colors;
+  $("#legend").innerHTML = [["resting", "Resting"], ["stimulated", "Stimulated"], ["firing", "Firing"]]
+    .map(([k, label]) => `<li><i style="background:${c[k]}"></i>${label}</li>`)
     .join("");
+}
+
+/** L / R labels under each hemisphere, and the ring around a selected group. */
+function updateBrainOverlay() {
+  if (!brain || !brain.w) return;
+  const sx = brain.sideScreenX();
+  const sides = sideLabels(sx.left, sx.right);
+  const place = (el, where) => {
+    const v = `${where === "start" ? 22 : brain.w - 22}px`;
+    if (el.style.left !== v) el.style.left = v;
+  };
+  place($("#label-l"), sides.left);
+  place($("#label-r"), sides.right);
+  const ring = $("#sel-ring");
+  const c = brain.selectionCircle();
+  ring.hidden = !c;
+  if (c) {
+    ring.style.left = `${c.x}px`;
+    ring.style.top = `${c.y}px`;
+    ring.style.width = ring.style.height = `${Math.max(28, 2 * c.r)}px`;
+  }
+}
+
+// ---- fly camera tabs and the 1 mm scale bar ----
+function wireFlyViews() {
+  const tabs = document.querySelectorAll("#fly-views button");
+  const line = $("#fly-views .tab-line");
+  const select = (btn, instant = false) => {
+    for (const b of tabs) b.setAttribute("aria-selected", String(b === btn));
+    moveIndicator(line, btn, "line");
+    fly.setView?.(btn.dataset.view, instant || reduceMotion);
+  };
+  for (const b of tabs) b.addEventListener("click", () => select(b));
+  document.fonts?.ready.then(() => moveIndicator(line, document.querySelector('#fly-views [aria-selected="true"]'), "line"));
+  moveIndicator(line, tabs[0], "line");
+  return select;
+}
+
+let scaleW = 0;
+function updateScaleBar() {
+  const s = $("#scale");
+  if (!fly.pxPerMm) {
+    s.hidden = true;
+    return;
+  }
+  s.hidden = false;
+  const w = Math.round(fly.pxPerMm());
+  if (Math.abs(w - scaleW) >= 1) {
+    scaleW = w;
+    $("#scale-line").style.width = `${w}px`;
+  }
 }
 
 const STATE_WORD = { eating: "Eating", disgusted: "Disgusted", resting: "Resting", idle: "Idle" };
@@ -164,14 +342,14 @@ function caption(s, tick) {
   const g = tick.game;
   switch (s) {
     case "eating":
-      return `Eating: MN9 is firing at ${g.mn9_rate_hz.toFixed(0)} Hz`;
+      return `MN9 firing at ${g.mn9_rate_hz.toFixed(0)} Hz`;
     case "disgusted":
-      return `Disgusted: bitter neurons firing at ${tick.group_rates_hz.bitter_grn.toFixed(0)} Hz` +
-        (g.mn9_rate_hz > 0 ? `, MN9 at ${g.mn9_rate_hz.toFixed(0)} Hz` : ", MN9 silent");
+      return `Bitter neurons at ${tick.group_rates_hz.bitter_grn.toFixed(0)} Hz` +
+        (g.mn9_rate_hz > 0 ? ` · MN9 ${g.mn9_rate_hz.toFixed(0)} Hz` : " · MN9 silent");
     case "resting":
-      return `Resting in the dark (light ${Math.round(g.light * 100)}%)`;
+      return `Resting in the dark · light ${Math.round(g.light * 100)}%`;
     default:
-      return "Idle: no taste input";
+      return "No taste input";
   }
 }
 
@@ -208,6 +386,7 @@ function updateDom() {
   setText("#fly-state-word", STATE_WORD[state.flyState] ?? "Idle");
   setText("#fly-caption", caption(state.flyState, tick));
   setText("#gulps", String(state.gulps));
+  setText("#gulps-word", state.gulps === 1 ? "gulp" : "gulps");
   if (tick.seq !== meters.seq) {
     meters.seq = tick.seq;
     updateMeters(tick);
@@ -242,11 +421,13 @@ function frame(now) {
   prevFrame = now;
 
   const batches = state.takeSpikes();
+  const tick = state.lastTick;
   if (brain) {
     for (const ids of batches) brain.spike(ids);
+    if (tick && tick.seq !== lastDrawnSeq) brain.setStimulated(stimulatedGroups(state.brain, tick.inputs_hz));
     perf.maxLit = Math.max(perf.maxLit, brain.render(source.paused === true));
+    updateBrainOverlay();
   }
-  const tick = state.lastTick;
   if (tick && tick.seq !== lastDrawnSeq) {
     lastDrawnSeq = tick.seq;
     perf.ticksDrawn += 1;
@@ -254,6 +435,7 @@ function frame(now) {
     if (perf.tickAges.length > 400) perf.tickAges.shift();
   }
   fly.render(now);
+  updateScaleBar();
   perf.chartPoints = chart.update(state);
   updateDom();
   perf.workMs.push(performance.now() - now);
@@ -305,6 +487,9 @@ window.__dash = {
       flyState: state.flyState,
       flyDomState: $("#fly").dataset.state ?? null,
       flyView: $("#fly canvas") ? "3d" : "2d",
+      flyModel: fly.constructor?.name ?? "2d",
+      atlasNeurons: brain?.nAtlas ?? 0,
+      simNeurons: brain?.nSim ?? 0,
       gulps: state.gulps,
       chartPoints: perf.chartPoints,
       medianFps: medianFps(),
@@ -319,13 +504,36 @@ window.__dash = {
 };
 
 legend();
-import("./fly3d.js")
-  .then(({ Fly3D }) => {
-    const el = $("#fly");
+const selectView = wireFlyViews();
+
+/** flybody model -> simple 3D fly -> 2D fly, whichever loads first in that order. */
+async function loadFly() {
+  const quality = params.get("quality") ?? CONFIG.fly3d.quality;
+  const el = $("#fly");
+  const put = (f) => {
     el.innerHTML = "";
-    fly = new Fly3D(el, CONFIG, params.get("quality") ?? CONFIG.fly3d.quality);
-  })
-  .catch((err) => console.warn(`3D fly unavailable, showing the 2D fly: ${err.message}`));
+    return f();
+  };
+  try {
+    const { loadFlyModel, FlyModel3D } = await import("./fly_model3d.js");
+    const { detectQuality } = await import("./fly3d.js");
+    const q = quality === "high" || quality === "low" ? quality : detectQuality();
+    const gltf = await loadFlyModel(q);
+    fly = put(() => new FlyModel3D(el, gltf, CONFIG, q));
+    selectView(document.querySelector('#fly-views [aria-selected="true"]'), true);
+    return;
+  } catch (err) {
+    console.warn(`flybody model unavailable (${err.message}); trying the simple 3D fly`);
+  }
+  document.querySelector("#fly-views").hidden = true; // views need the model
+  try {
+    const { Fly3D } = await import("./fly3d.js");
+    fly = put(() => new Fly3D(el, CONFIG, quality));
+  } catch (err) {
+    console.warn(`3D fly unavailable, showing the 2D fly: ${err.message}`);
+  }
+}
+loadFly();
 loadPositions().catch((err) => {
   $("#brain-msg").textContent = `No neuron positions: ${err.message}`;
   perf.jsErrors.push(`positions: ${err.message}`);

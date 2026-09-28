@@ -14,6 +14,7 @@ python -m venv .venv
 pip install -r requirements.txt
 python -m brain.download_data     # ~130 MB into data/, checksums verified
 python -m brain.neuron_groups     # writes data/neuron_groups.json
+python -m server.fly_model        # the dashboard's 3D fly (flybody): ~140 MB download, 2 min
 pytest -q                          # a few minutes; includes full-brain and reduced-circuit validation
 python -m brain.validate           # Phase 1 report (full brain), writes data/validation_results.json
 python -m brain.validate_reduced   # Phase 2 table: reduced vs full brain, shuffles, speed
@@ -68,18 +69,28 @@ Start the server, then open <http://localhost:8000/dashboard/> on the laptop.
 - **JS tests**: `cd web/dashboard && npm test` (also run by `pytest`; needs Node.js)
 
 three.js loads from `cdn.jsdelivr.net` (pinned to 0.170.0), so the 3D view needs internet access.
-Neuron positions come from the FlyWire annotation table (`pos_x/y/z`, 4×4×40 nm voxels) for
-v630 neurons whose root ID is unchanged in v783: 17,101 of the 19,698 reduced-brain neurons.
 Display settings are in `web/dashboard/config.js`.
 
 What's on the page:
 
-- **The fly** (`fly3d.js`): a 3D Drosophila on a dish, with a true 1 mm scale bar. Drag to turn it.
-  It extends its proboscis and pumps only while MN9 fires (the pump rate follows the MN9 rate),
-  grooms and buzzes when bitter neurons fire, and rests in the dark. The poses live in
-  `fly_motion.js`; the state comes from the brain (see `state.js`).
-  Quality is automatic: full (shadows, reflections) on a GPU, light on a software renderer.
-  Force it with `?quality=high` or `?quality=low`. If three.js can't load, a 2D fly is shown.
+- **The brain** (`brain3d.js`, front view): every neuron with a position in the FlyWire
+  annotation table (139,248; `pos_x/y/z`, 4×4×40 nm voxels) is drawn, so the whole brain's
+  shape shows. Only the simulated ones can light up: 17,101 of the 19,698 reduced-brain
+  neurons (v630 IDs unchanged in v783). Colors: resting, *stimulated* (the phone input is
+  driving that neuron's group right now) and *firing* (a spike in a recent tick). The chips
+  (All / Sugar / Bitter / MN9) highlight one group. Hover a neuron for its FlyWire cell type,
+  side, transmitter and ID. L / R are placed from the annotation table's `side` column.
+  Drag to turn, double-click to reset.
+- **The fly** (`fly_model3d.js`): the flybody fruit fly (Vaxenburg et al. 2025, Nature;
+  `TuragaLab/flybody`, Apache-2.0), posed through its own joints, with Side / Top / Follow
+  cameras and a true 1 mm scale bar. It extends its proboscis into the food and pumps only
+  while MN9 fires (the pump rate follows the MN9 rate), grooms and buzzes its wings when
+  bitter neurons fire, and rests in the dark. The poses live in `fly_motion.js`; the state
+  comes from the brain (see `state.js`). Build it once with `python -m server.fly_model`
+  (`data/fly_model/fly.glb`, 132k triangles, and `fly_low.glb`, 36k, no bristles).
+  Quality is automatic: the full model with shadows and reflections on a GPU, the light model
+  on a software renderer. Force it with `?quality=high` or `?quality=low`. Without the built
+  model the simpler primitive fly (`fly3d.js`) is shown; without three.js, a 2D fly.
 - **Why it's doing that**: live meters for the sugar and bitter neurons and MN9, with the
   server's eating threshold drawn on the MN9 meter, and a sentence explaining the current state.
 - **Gulps**: how many times the brain started eating this session.

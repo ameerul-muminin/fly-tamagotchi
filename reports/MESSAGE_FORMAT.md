@@ -11,6 +11,9 @@ with long lists shortened to `"..."`.
 | `GET /health` | anyone | | server status (JSON) |
 | `GET /api/brain` | anyone | | the `brain` object from `hello` |
 | `GET /api/positions` | dashboard | | neuron positions for the 3D view (Phase 4, see below) |
+| `GET /api/atlas`, `/api/atlas.bin` | dashboard | | every annotated neuron's position, the brain backdrop (see below) |
+| `GET /api/atlas/neuron/{index}` | dashboard | | FlyWire annotation of one atlas entry (tooltip) |
+| `GET /api/fly_model.glb`, `/api/fly_model_low.glb` | dashboard | | the 3D fly, built by `python -m server.fly_model` (404 until built) |
 | `GET /dashboard/` | browser | | the dashboard page (`web/dashboard/`); `/` redirects here |
 
 ## Conventions
@@ -267,3 +270,27 @@ What the phone page sends:
 | Every 3 s | `{"type": "ping", "t": <performance.now()>}` |
 
 It vibrates when `status.eating` goes from `false` to `true`.
+
+## `GET /api/atlas`, `/api/atlas.bin`, `/api/atlas/neuron/{index}` (dashboard redesign)
+
+The brain view's backdrop: every neuron with a position in the FlyWire annotation table.
+
+`/api/atlas` (JSON header):
+
+```json
+{"units": "um", "scale_um": 0.1, "n": 139248, "n_sim": 17101,
+ "left_x_um": 323.3, "right_x_um": 721.8, "source": "flyconnectome/flywire_annotations@8587524:..."}
+```
+
+- `/api/atlas.bin` is `n` × (x, y, z) little-endian int16, in steps of `scale_um` µm.
+- The first `n_sim` entries are the running brain's placed neurons, in the same order as
+  `/api/positions` `ids`. The rest are not simulated and never spike.
+- `left_x_um` / `right_x_um` are the mean x of neurons whose `side` is left / right; the
+  page places its L / R labels from them.
+
+`/api/atlas/neuron/{index}` returns the annotation row of one entry (404 outside `0..n-1`):
+
+```json
+{"index": 0, "root_id": "720575940602313952", "simulated": true, "cell_type": "CB1937",
+ "side": "right", "top_nt": "glutamate", "super_class": "central", "cell_class": null}
+```

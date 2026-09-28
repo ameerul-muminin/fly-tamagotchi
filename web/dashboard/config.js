@@ -27,14 +27,34 @@ export const CONFIG = {
   meterMaxHz: { sugar_grn: 200, bitter_grn: 200, mn9_primary: 150 },  // full bar
   meterSmoothing: 0.35,        // per tick, 1 = no smoothing
 
-  // --- 3D brain ---
-  flashDecayMs: 300,           // a spike's flash fades with this time constant
-  pointSizeBase: 2.0,          // px, neurons at rest
-  pointSizeFlash: 6.0,         // extra px at full flash
-  pointSizeGroupBonus: 3.0,    // extra px for sugar/bitter/MN9 neurons
-  restAlpha: 0.16,
-  cameraDistance: 1.9,         // camera distance in units of the point cloud's radius
-  autoRotateDegPerSec: 6,
+  // --- 3D brain (brain3d.js) ---
+  // Every annotated FlyWire neuron is drawn as the backdrop (/api/atlas); only the running
+  // brain's neurons can be stimulated or fire. Colors mean the same everywhere:
+  //   resting = no spike lately, stimulated = in a group the phone input is driving now
+  //   (hello.brain.stimuli + tick.inputs_hz), firing = spiked in a recent tick.
+  brain: {
+    colors: { resting: "#9fb3d6", stimulated: "#a390ff", firing: "#f5b84a", backdrop: "#8394b3" },
+    flashDecayMs: 300,         // a spike's glow fades with this time constant
+    stimTauMs: 120,            // stimulated tint fades in and out this fast
+    pointPx: 1.7,              // simulated neurons at rest (CSS px)
+    backdropPx: 1.4,           // the rest of the brain (CSS px)
+    firingPx: 6,               // extra size at full glow
+    backdropAlpha: 0.42,
+    restAlpha: 0.7,
+    dimAlpha: 0.25,            // multiplier for everything outside a selection
+    lowBackdropEvery: 5,       // low quality (software GL): draw every n-th backdrop neuron
+    fov: 22,
+    fitMargin: 1.1,            // camera fits the brain's extent times this
+    hoverPx: 9,                // pointer must be this close to a neuron to pick it
+    maxPixelRatio: 2,
+  },
+  // Selection chips above the brain: label -> group in hello.brain.groups.
+  brainSelections: [
+    { key: "all", label: "All" },
+    { key: "sugar_grn", label: "Sugar" },
+    { key: "bitter_grn", label: "Bitter" },
+    { key: "mn9_primary", label: "MN9" },
+  ],
 
   // --- colors (group -> CSS color); shared by chart, legend and 3D view ---
   // Checked with the dataviz skill's validate_palette.js on surface #131a26 (dark):
@@ -56,7 +76,18 @@ export const CONFIG = {
   positionsPath: "/api/positions",
   phoneLinkRefreshMs: 5000,   // how often the phone QR panel re-checks the phone URL
 
-  // --- 3D fly (fly3d.js, fly_motion.js); display only ---
+  // --- 3D fly (fly_model3d.js: the flybody model; fly3d.js: simple fallback) ---
+  // Display only. fly_motion.js holds the pose logic both share.
+  flyModelUrl: { high: "/api/fly_model.glb", low: "/api/fly_model_low.glb" },  // by render quality
+  flyViews: {
+    // Camera per view: distance (mm), polar angle from straight down... see fly_model3d.js
+    // Spherical camera around `target` (mm): polar from straight above, azimuth around
+    // the vertical from +z (the fly's right). The head points along +x.
+    side:   { radius: 8.6, polar: 1.42, azimuth: Math.PI, target: [-0.6, 0.8, 0] },
+    top:    { radius: 11.5, polar: 0.02, azimuth: -Math.PI / 2, target: [-0.9, 0.4, 0] },
+    follow: { radius: 6.2, polar: 1.2, azimuth: 2.3, target: [0.35, 0.85, 0], drift: 0.35 },
+  },
+  flyViewMs: 650,              // camera move between views
   fly3d: {
     unitsPerMm: 1.08,          // model is 2.7 units long; a Drosophila female is ~2.5 mm
     poseTauSec: 0.18,          // how fast the pose follows a state change

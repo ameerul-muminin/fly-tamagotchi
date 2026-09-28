@@ -35,6 +35,9 @@ from brain.config import DATA_DIR, PROJECT_ROOT
 from server.config import DASHBOARD_CHECKS, RECORD_SCRIPT, SERVER
 from server.dashboard import SAMPLE_PATH, create_replay_app
 from server.fake_phone import spawn_server
+from server.fly_model import OUT_LOW_PATH, OUT_PATH
+
+FLY_MODEL_BUILT = OUT_PATH.exists() and OUT_LOW_PATH.exists()
 
 RESULTS_PATH = DATA_DIR / "phase4_validation.json"
 SHOTS_DIR = PROJECT_ROOT / "reports" / "phase4_screenshots"
@@ -170,6 +173,9 @@ async def replay_check(cdp: Cdp) -> dict:
         "all four fly states shown": set(c.replay_states) <= set(snap["statesSeen"]),
         "fly view state matches state": snap["flyDomState"] == snap["flyState"],
         "3D fly drawn (not the 2D fallback)": snap["flyView"] == "3d",
+        # With the model built (python -m server.fly_model), it must be the one drawn.
+        "flybody model drawn (when built)": snap["flyModel"] == "FlyModel3D" or not FLY_MODEL_BUILT,
+        "whole-brain backdrop drawn": snap["atlasNeurons"] > snap["simNeurons"] > 0,
         "mood bars filled": all(v for v in snap["mood"].values()),
         "no JS errors": len(snap["jsErrors"]) <= c.max_js_errors,
     }

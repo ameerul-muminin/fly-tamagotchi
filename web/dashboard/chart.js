@@ -3,7 +3,7 @@
 
 import { CONFIG } from "./config.js";
 
-const PAD = { l: 40, r: 84, t: 10, b: 34 };
+const PAD = { l: 54, r: 104, t: 10, b: 34 };
 const BAND_H = 5;
 
 export class ActivityChart {
@@ -77,7 +77,7 @@ export class ActivityChart {
     const y = (hz) => PAD.t + plotH - (Math.min(hz, config.chartMaxHz) / config.chartMaxHz) * plotH;
 
     // grid + y labels
-    ctx.font = "12px 'Atkinson Hyperlegible', system-ui, sans-serif";
+    ctx.font = "12px Inter, system-ui, sans-serif";
     ctx.fillStyle = ink;
     ctx.strokeStyle = grid;
     ctx.lineWidth = 1;
@@ -91,7 +91,8 @@ export class ActivityChart {
       ctx.fillText(`${hz}`, PAD.l - 6, y(hz));
     }
     ctx.save();
-    ctx.translate(11, PAD.t + plotH / 2);
+    ctx.translate(10, PAD.t + plotH / 2);
+    ctx.font = "11px Inter, system-ui, sans-serif";
     ctx.rotate(-Math.PI / 2);
     ctx.textAlign = "center";
     ctx.fillText("spikes/s per neuron", 0, 0);

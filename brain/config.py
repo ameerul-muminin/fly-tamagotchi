@@ -241,6 +241,7 @@ class PositionsConfig:
     columns: tuple[str, str, str] = ("pos_x", "pos_y", "pos_z")
     voxel_um: tuple[float, float, float] = (0.004, 0.004, 0.040)  # 4 x 4 x 40 nm
     decimals: int = 1  # rounding of the µm values sent to the browser
+    atlas_scale_um: float = 0.1  # whole-brain backdrop: int16 steps of this many µm
 
 
 POSITIONS = PositionsConfig()

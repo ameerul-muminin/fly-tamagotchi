@@ -21,7 +21,6 @@ from pathlib import Path
 import segno
 from fastapi import FastAPI
 from fastapi.responses import Response
-from fastapi.staticfiles import StaticFiles
 
 from server.config import ServerConfig
 
@@ -106,4 +105,5 @@ def add_web_routes(app: FastAPI, cfg: ServerConfig) -> None:
     async def api_phone_config() -> dict:
         return dataclasses.asdict(cfg.phone)
 
-    app.mount("/phone", StaticFiles(directory=WEB_DIR / "phone", html=True), name="phone")
+    from server.dashboard import NoCacheStatic
+    app.mount("/phone", NoCacheStatic(directory=WEB_DIR / "phone", html=True), name="phone")

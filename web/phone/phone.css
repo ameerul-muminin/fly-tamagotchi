@@ -1,121 +1,193 @@
+/* Phone controller. Same visual language as the dashboard: dark neutral surfaces with
+   shadow rings, one warm hero surface (the sugar tap zone), press feedback on everything
+   pressable (scale 0.96), custom ease-out curves, and no motion under reduced motion. */
 :root {
-  --bg: #16130f;
-  --panel: #221d17;
-  --line: #3a3128;
-  --text: #f4ecdf;
-  --muted: #a8998545;
-  --sub: #b3a590;
+  --bg: #0a0b0e;
+  --surface: #121419;
+  --surface-2: #181b21;
+  --ink: #eef0f4;
+  --ink-2: #b0b6c2;
+  --ink-muted: #7d8491;
+  --ring: 0 0 0 1px oklch(1 0 0 / 0.08);
   --sugar: #f2b134;
-  --sugar-deep: #c77d0a;
-  --bitter: #7bc96f;
+  --bitter: #c08af0;
   --light: #ffe9a8;
-  --bad: #e5634d;
-  --ok: #7bc96f;
+  --ok: #4ade80;
+  --bad: #ff8a73;
+  --warn: #ffb4a3;
+  --accent: #9b87f5;
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --radius: 18px;
   color-scheme: dark;
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-html, body { margin: 0; background: var(--bg); color: var(--text); }
+html, body { margin: 0; background: var(--bg); color: var(--ink); }
 body {
-  font: 16px/1.35 -apple-system, BlinkMacSystemFont, "SF Pro Rounded", "Segoe UI", system-ui, sans-serif;
+  font: 16px/1.35 -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, "Segoe UI", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
   min-height: 100dvh;
-  display: flex; flex-direction: column; gap: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
   padding: calc(env(safe-area-inset-top) + 10px) 16px calc(env(safe-area-inset-bottom) + 16px);
-  max-width: 520px; margin: 0 auto;
-  user-select: none; -webkit-user-select: none;
+  max-width: 520px;
+  margin: 0 auto;
+  user-select: none;
+  -webkit-user-select: none;
   touch-action: manipulation;
-  transition: background-color .25s;
 }
-body.flash { background: #3b2a0b; }
+p { margin: 0; }
+[hidden] { display: none !important; }
 
-.bar { display: flex; justify-content: space-between; align-items: center; }
-.brand { font-size: 15px; letter-spacing: .02em; color: var(--sub); }
-.brand b { color: var(--text); }
-.conn { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--sub); }
-.conn i { width: 9px; height: 9px; border-radius: 50%; background: var(--sugar); }
-.conn[data-state="open"] i { background: var(--ok); }
+/* ---------- header ---------- */
+.bar { display: flex; justify-content: space-between; align-items: center; min-height: 36px; }
+.brand { display: inline-flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
+.brand-mark { width: 24px; height: 24px; }
+.conn {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-size: 12px; font-weight: 550; color: var(--ink-2);
+  padding: 5px 10px 5px 9px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  box-shadow: var(--ring);
+  font-variant-numeric: tabular-nums;
+}
+.conn i { width: 7px; height: 7px; border-radius: 50%; background: var(--sugar); transition: background-color 200ms ease; }
+.conn[data-state="open"] i { background: var(--ok); box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.18); }
 .conn[data-state="closed"] i { background: var(--bad); }
 
-.fly-state {
-  display: flex; gap: 14px; align-items: center;
-  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px;
-}
-.fly-line { font-weight: 650; font-size: 18px; }
-.fly-sub { font-size: 13px; color: var(--sub); font-variant-numeric: tabular-nums; }
+.card { background: var(--surface); border-radius: var(--radius); box-shadow: var(--ring); }
 
-/* tiny cartoon face: the full fly is on the laptop dashboard */
+/* ---------- fly status ---------- */
+.fly-state { display: flex; gap: 14px; align-items: center; padding: 12px 14px; }
+.fly-text { min-width: 0; }
+.fly-line { font-weight: 650; font-size: 18px; letter-spacing: -0.01em; }
+.fly-sub { font-size: 13px; color: var(--ink-2); font-variant-numeric: tabular-nums; margin-top: 2px; }
+
+/* A small fly face whose ring shows the state; the full fly is on the laptop. */
 .face {
-  flex: none; width: 54px; height: 54px; border-radius: 50%; position: relative;
-  background: radial-gradient(circle at 35% 30%, #6b5a45, #3b3026);
-  border: 2px solid #574837;
+  --state: #5b616d;
+  flex: none; width: 48px; height: 48px; border-radius: 50%; position: relative;
+  background: radial-gradient(circle at 40% 32%, #d9b081, #a8743f 70%);
+  box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--state);
+  transition: box-shadow 250ms ease;
 }
-.face .eye { position: absolute; top: 14px; width: 16px; height: 16px; border-radius: 50%; background: #b3261e; }
-.face .eye:first-child { left: 7px; }
-.face .eye:nth-child(2) { right: 7px; }
+.face .eye {
+  position: absolute; top: 12px; width: 15px; height: 17px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #ff5a4a, #a3121a 60%, #5e080c);
+  transition: height 200ms var(--ease-out), top 200ms var(--ease-out);
+}
+.face .eye:first-child { left: 5px; }
+.face .eye:nth-child(2) { right: 5px; }
 .face .mouth {
-  position: absolute; left: 50%; bottom: 9px; width: 14px; height: 4px; margin-left: -7px;
-  border-radius: 3px; background: #1a1410; transition: all .2s;
+  position: absolute; left: 50%; bottom: 7px; width: 10px; height: 4px; translate: -50% 0;
+  border-radius: 3px; background: #4a2c12;
 }
-.face[data-mood="eating"] .mouth { height: 12px; width: 8px; margin-left: -4px; border-radius: 50%; animation: chew .35s infinite alternate; }
-.face[data-mood="dark"] .eye { height: 3px; top: 21px; background: #1a1410; }
-@keyframes chew { to { height: 5px; } }
+.face[data-mood="eating"] { --state: var(--ok); }
+.face[data-mood="eating"] .mouth { height: 9px; width: 7px; border-radius: 50%; animation: chew 0.35s ease-in-out infinite alternate; }
+.face[data-mood="dark"] { --state: #7aa2ff; filter: brightness(0.75); }
+.face[data-mood="dark"] .eye { height: 3px; top: 19px; background: #3a1a0c; }
+@keyframes chew { to { height: 4px; } }
 
-.moods { display: grid; gap: 7px; }
-.mood { display: grid; grid-template-columns: 82px 1fr; align-items: center; gap: 10px; }
-.mood label { font-size: 13px; color: var(--sub); }
-.meter { height: 10px; background: #2d261f; border-radius: 6px; overflow: hidden; }
-.fill { height: 100%; width: 0%; border-radius: 6px; transition: width .4s; }
+/* ---------- mood ---------- */
+.moods { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; padding: 0 2px; }
+.mood { display: grid; gap: 6px; }
+.mood label { font-size: 12px; color: var(--ink-2); }
+.meter { height: 6px; background: rgba(255, 255, 255, 0.07); border-radius: 3px; overflow: hidden; }
+.fill { height: 100%; width: 0%; border-radius: 3px; transition: width 400ms var(--ease-out); }
 .fill.hunger { background: #e0874a; }
 .fill.happiness { background: #e8c547; }
 .fill.energy { background: #6fb5c9; }
 
+/* ---------- sugar tap zone (the hero) ---------- */
 .tap {
-  flex: 1 1 auto; min-height: 220px;
-  appearance: none; border: 0; border-radius: 28px; color: #2a1a00;
-  background: radial-gradient(circle at 50% 38%, #ffd36b, var(--sugar) 55%, var(--sugar-deep));
-  box-shadow: inset 0 -6px 0 rgba(0,0,0,.18), 0 10px 30px rgba(242,177,52,.18);
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
-  font: inherit; cursor: pointer; position: relative; overflow: hidden;
-  transition: transform .08s;
+  flex: 1 1 auto;
+  min-height: 240px;
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  appearance: none;
+  border: 0;
+  border-radius: 28px;
+  padding: 24px;
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+  background: radial-gradient(120% 90% at 50% 35%, #3a2a10 0%, #1e1a14 55%, #141210 100%);
+  box-shadow: 0 0 0 1px rgba(242, 177, 52, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+  transition-property: scale, box-shadow;
+  transition-duration: 150ms;
+  transition-timing-function: ease-out;
 }
-.tap:active, .tap.pressed { transform: scale(.975); }
-.tap-title { font-size: 28px; font-weight: 750; }
-.tap-sub { font-size: 14px; opacity: .75; }
-.drop {
-  width: 46px; height: 46px; background: #fff7e0; border-radius: 0 50% 50% 50%; transform: rotate(45deg);
-  box-shadow: inset -5px -5px 0 rgba(0,0,0,.08);
+.tap:active, .tap.pressed { scale: 0.96; }
+.glow {
+  position: absolute; inset: -20%; z-index: -1;
+  background: radial-gradient(40% 35% at 50% 42%, rgba(246, 198, 94, 0.28), transparent 70%);
+  transition: opacity 300ms ease;
 }
+.drop { width: 56px; height: 70px; filter: drop-shadow(0 8px 18px rgba(242, 177, 52, 0.35)); transition: translate 200ms var(--ease-out); }
+.tap:active .drop { translate: 0 3px; }
+.tap-title { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; margin-top: 6px; }
+.tap-sub { font-size: 14px; color: var(--ink-2); }
 .tap .ripple {
-  position: absolute; width: 40px; height: 40px; border-radius: 50%;
-  background: rgba(255,255,255,.55); transform: translate(-50%, -50%) scale(0);
-  animation: ripple .55s ease-out forwards; pointer-events: none;
+  position: absolute; width: 40px; height: 40px; border-radius: 50%; z-index: -1;
+  background: rgba(255, 214, 120, 0.35);
+  transform: translate(-50%, -50%) scale(0.2);
+  animation: ripple 600ms var(--ease-out) forwards;
+  pointer-events: none;
 }
-@keyframes ripple { to { transform: translate(-50%, -50%) scale(12); opacity: 0; } }
+@keyframes ripple { to { transform: translate(-50%, -50%) scale(11); opacity: 0; } }
+/* the fly started eating: a green glow on the tap zone (with the vibration) */
+body.flash .tap { box-shadow: 0 0 0 1px rgba(74, 222, 128, 0.6), 0 0 40px rgba(74, 222, 128, 0.25); }
+.tap { transition-property: scale, box-shadow; }
 
-.sensors { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.sensor {
-  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
-  padding: 10px 12px; position: relative; overflow: hidden; min-height: 86px;
-}
-.s-title { font-size: 13px; color: var(--sub); }
-.s-value { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
-.s-sub { font-size: 12px; color: var(--bitter); }
-#shake-card.fired { animation: shake .45s; border-color: var(--bitter); }
-@keyframes shake { 20%,60% { transform: translateX(-5px); } 40%,80% { transform: translateX(5px); } }
-.lightbar { height: 6px; background: #2d261f; border-radius: 4px; overflow: hidden; margin-top: 6px; }
-#light-fill { height: 100%; width: 0%; background: var(--light); transition: width .25s; }
+/* ---------- sensors ---------- */
+.sensors { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.sensor { padding: 12px 14px; position: relative; overflow: hidden; min-height: 96px; }
+.s-head { display: flex; align-items: center; gap: 6px; }
+.s-icon { width: 16px; height: 16px; fill: none; stroke: var(--ink-2); stroke-width: 1.6; stroke-linecap: round; }
+.s-title { font-size: 13px; color: var(--ink-2); }
+.s-value { font-size: 20px; font-weight: 650; font-variant-numeric: tabular-nums; margin-top: 6px; letter-spacing: -0.01em; }
+.s-sub { font-size: 12px; color: var(--ink-muted); margin-top: 2px; }
+.s-sub.bitter { color: var(--bitter); }
+#shake-card.fired { animation: shake 450ms var(--ease-out); box-shadow: 0 0 0 1px rgba(192, 138, 240, 0.7); }
+@keyframes shake { 20%, 60% { translate: -5px 0; } 40%, 80% { translate: 5px 0; } }
+.lightbar { height: 6px; background: rgba(255, 255, 255, 0.07); border-radius: 3px; overflow: hidden; margin-top: 10px; }
+#light-fill { height: 100%; width: 0%; background: var(--light); border-radius: 3px; transition: width 250ms var(--ease-out); }
 #cam {
-  position: absolute; right: 8px; top: 8px; width: 34px; height: 34px; object-fit: cover;
-  border-radius: 8px; opacity: .8; background: #000;
+  position: absolute; right: 10px; top: 10px; width: 34px; height: 34px; object-fit: cover;
+  border-radius: 9px; background: #000;
+  outline: 1px solid oklch(1 0 0 / 0.1); outline-offset: -1px;
 }
 #cam:not(.on) { display: none; }
 
+/* ---------- enable button ---------- */
 .enable {
-  appearance: none; font: inherit; font-weight: 650; color: var(--text);
-  background: transparent; border: 1.5px solid var(--line); border-radius: 14px; padding: 13px;
+  appearance: none;
+  height: 50px;
+  font: inherit; font-size: 16px; font-weight: 600;
+  color: #fff;
+  background: linear-gradient(180deg, #a896ff, #8a74f0);
+  border: 0; border-radius: 14px;
+  box-shadow: 0 0 0 1px rgba(155, 135, 245, 0.5), 0 6px 18px rgba(155, 135, 245, 0.25);
+  cursor: pointer;
+  transition-property: scale, opacity;
+  transition-duration: 150ms;
+  transition-timing-function: ease-out;
 }
-.enable:disabled { opacity: .5; }
-.note { margin: 0; font-size: 13px; color: var(--sub); }
-.note.warn { color: #f0a38f; }
+.enable:active { scale: 0.96; }
+.enable:disabled { opacity: 0.45; }
+.note { font-size: 13px; color: var(--ink-muted); }
+.note.warn { color: var(--warn); }
 
 .haptic { position: absolute; width: 1px; height: 1px; overflow: hidden; opacity: 0; pointer-events: none; }
+
+@media (max-height: 700px) {
+  .tap { min-height: 190px; }
+  .drop { width: 44px; height: 56px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tap:active, .tap.pressed, .enable:active { scale: 1; }
+  .tap .ripple, #shake-card.fired, .face[data-mood="eating"] .mouth { animation: none; }
+}

@@ -41,9 +41,7 @@ class Positions:
 @lru_cache(maxsize=1)
 def _annotation_positions() -> pd.DataFrame:
     """root_id -> (pos_x, pos_y, pos_z) voxel coordinates, one row per root ID."""
-    df = pd.read_csv(ANNOTATIONS.path, sep="\t", usecols=["root_id", *POSITIONS.columns])
-    df = df.dropna(subset=list(POSITIONS.columns)).drop_duplicates("root_id")
-    return df.set_index("root_id")
+    return _annotation_table()[list(POSITIONS.columns)]
 
 
 def neuron_positions(ids: Iterable[int]) -> Positions:
@@ -78,3 +76,77 @@ def positions_payload(ids: Iterable[int], groups: dict[str, list[str]] | None = 
         "groups_unplaced": {g: [i for i in gids if i not in placed]
                             for g, gids in (groups or {}).items()},
     }
+
+
+# ---------------------------------------------------------------------------
+# Whole-brain atlas: every neuron in the annotation table, drawn as the backdrop of the
+# 3D view. Only the running brain's neurons can spike; the rest are anatomy context.
+# ---------------------------------------------------------------------------
+ATLAS_INFO_COLUMNS = ("cell_type", "side", "top_nt", "super_class", "cell_class")
+
+
+@lru_cache(maxsize=1)
+def _annotation_table() -> pd.DataFrame:
+    """root_id -> positions and the label columns shown in the dashboard tooltip."""
+    df = pd.read_csv(ANNOTATIONS.path, sep="\t",
+                     usecols=["root_id", *POSITIONS.columns, *ATLAS_INFO_COLUMNS])
+    df = df.dropna(subset=list(POSITIONS.columns)).drop_duplicates("root_id")
+    return df.set_index("root_id")
+
+
+@dataclass(frozen=True)
+class Atlas:
+    """All placed annotation neurons; the running brain's placed neurons come first."""
+
+    root_ids: np.ndarray   # int64, atlas order
+    xyz_um: np.ndarray     # (n, 3) float, µm
+    n_sim: int             # the first n_sim entries are the simulated neurons, in the
+                           # same order as `neuron_positions(sim_ids).ids`
+    left_x_um: float       # mean x of neurons annotated side == "left"
+    right_x_um: float      # mean x of neurons annotated side == "right"
+
+
+def atlas(sim_ids: Iterable[int]) -> Atlas:
+    """Every neuron with a position, simulated ones first (see `Atlas`)."""
+    table = _annotation_table()
+    sim = neuron_positions(sim_ids).ids
+    rest = table.index.to_numpy()[~np.isin(table.index.to_numpy(), sim)]
+    order = np.concatenate([sim, rest])
+    vox = table.loc[order, list(POSITIONS.columns)].to_numpy(dtype=float)
+    xyz = vox * np.asarray(POSITIONS.voxel_um)
+    side = table.loc[order, "side"].to_numpy()
+    return Atlas(order, xyz, int(sim.size),
+                 float(xyz[side == "left", 0].mean()), float(xyz[side == "right", 0].mean()))
+
+
+def atlas_payload(a: Atlas) -> tuple[dict, bytes]:
+    """(JSON header, binary body) for the dashboard.
+
+    The body is little-endian int16 x, y, z per neuron in units of `scale_um`
+    (0.1 µm; the FlyWire brain is under 1000 µm across, so int16 is enough).
+    """
+    q = np.round(a.xyz_um / POSITIONS.atlas_scale_um).astype("<i2")
+    header = {
+        "units": "um",
+        "scale_um": POSITIONS.atlas_scale_um,
+        "n": int(a.root_ids.size),
+        "n_sim": a.n_sim,
+        "left_x_um": round(a.left_x_um, 1),
+        "right_x_um": round(a.right_x_um, 1),
+        "source": f"{ANNOTATIONS.repo}@{ANNOTATIONS.commit[:7]}:{ANNOTATIONS.repo_path} "
+                  f"columns {', '.join(POSITIONS.columns)}; sides from column 'side'",
+    }
+    return header, q.tobytes()
+
+
+def atlas_neuron(a: Atlas, index: int) -> dict:
+    """Tooltip facts for one atlas entry, straight from the annotation table."""
+    rid = int(a.root_ids[index])
+    row = _annotation_table().loc[rid]
+
+    def s(col: str) -> str | None:
+        v = row[col]
+        return None if pd.isna(v) else str(v)
+
+    return {"index": index, "root_id": str(rid), "simulated": index < a.n_sim,
+            **{col: s(col) for col in ATLAS_INFO_COLUMNS}}
