@@ -76,11 +76,16 @@ function onMessage(msg) {
 }
 
 async function loadPositions() {
-  const need = (r, what) => (r.ok ? r : Promise.reject(new Error(`${what}: HTTP ${r.status}`)));
+  // A 404 here usually means a server started before this page's code: restart it.
+  const get = async (url, kind) => {
+    const r = await fetch(url);
+    if (!r.ok) throw new Error(`${url}: HTTP ${r.status}${r.status === 404 ? " (restart the server)" : ""}`);
+    return kind === "json" ? r.json() : r.arrayBuffer();
+  };
   const [pos, head, bin] = await Promise.all([
-    fetch(CONFIG.positionsPath).then((r) => need(r, "positions").json()),
-    fetch("/api/atlas").then((r) => need(r, "atlas").json()),
-    fetch("/api/atlas.bin").then((r) => need(r, "atlas").arrayBuffer()),
+    get(CONFIG.positionsPath, "json"),
+    get("/api/atlas", "json"),
+    get("/api/atlas.bin", "bin"),
   ]);
   positions = pos;
   atlas = { header: head, xyz: new Int16Array(bin) };
