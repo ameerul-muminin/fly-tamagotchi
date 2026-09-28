@@ -53,6 +53,11 @@ test("deriveFlyState follows the brain readouts and the priority order", () => {
   assert.equal(deriveFlyState({ ...base, game: { eating: false, light: 0.05 } }), "resting");
   // eating outranks disgust (sugar+bitter while MN9 still fires): shown as eating
   assert.equal(deriveFlyState({ group_rates_hz: { bitter_grn: 140 }, game: { eating: true, light: 1 } }), "eating");
+  // Phase 5: the server's dark flag decides resting; fainted outranks everything.
+  assert.equal(deriveFlyState({ ...base, game: { eating: false, light: 0.05, dark: false } }), "idle");
+  assert.equal(deriveFlyState({ ...base, game: { eating: false, light: 0.9, dark: true } }), "resting");
+  assert.equal(deriveFlyState({ group_rates_hz: { bitter_grn: 140 }, game: { eating: true, light: 0, fainted: true } }),
+    "fainted");
 });
 
 test("replaying the sample shows all four fly states", () => {

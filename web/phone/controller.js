@@ -131,7 +131,10 @@ export function statusView(s, cfg = DEFAULTS) {
     sugarLeftMs: left.sugar ?? 0,
     bitterLeftMs: left.bitter ?? 0,
     light: finite(s.light) ? s.light : null,
-    dark: finite(s.light) && s.light < c.dark_below,
+    // The server's own dark flag (Phase 5, one threshold everywhere); older servers
+    // only send the level.
+    dark: typeof s.dark === "boolean" ? s.dark : finite(s.light) && s.light < c.dark_below,
+    fainted: s.fainted === true,
   };
 }
 

@@ -8,9 +8,10 @@ export function deriveFlyState(tick, config = CONFIG) {
   const g = tick.game;
   const bitterHz = tick.group_rates_hz?.bitter_grn ?? 0;
   const tests = {
+    fainted: g.fainted === true,
     eating: g.eating === true,
     disgusted: bitterHz >= config.disgustBitterHz,
-    resting: g.light <= config.darkLevel,
+    resting: typeof g.dark === "boolean" ? g.dark : g.light <= config.darkLevel,
     idle: true,
   };
   return config.statePriority.find((s) => tests[s]) ?? "idle";

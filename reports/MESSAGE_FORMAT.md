@@ -26,8 +26,10 @@ with long lists shortened to `"..."`.
   simulated time the event takes effect.
 - **Per-client queues.** Each client has its own queue of 8 messages. If a client reads too
   slowly, its oldest messages are dropped; the brain never waits for a client.
-- **Brain vs game.** Anything under `game.mood` is a placeholder until Phase 5
-  (`mood_rules_active: false`). `eating` is a pure readout of MN9 spikes.
+- **Brain vs game.** `eating` is a pure readout of MN9 spikes. `game.mood`, `dark` and
+  `fainted` come from the Phase 5 game rules (`server/game.py`, values in
+  `server/config.py` `GameRules`), which react to brain readouts but never decide eating.
+  Before Phase 5, `mood` was a placeholder (`mood_rules_active: false`).
 
 ---
 
@@ -85,7 +87,8 @@ later but marked partial.
 | Message | Effect |
 |---|---|
 | `{"type": "ping", "t": ...}` | `pong` reply |
-| `{"type": "reset_brain"}` | Between chunks, every neuron returns to rest, stimuli stop and `t_ms` restarts at 0 |
+| `{"type": "reset_brain"}` | Between chunks, every neuron returns to rest, stimuli stop, `t_ms` restarts at 0 and the fly starts fresh (Phase 5 start mood) |
+| `{"type": "revive"}` | Phase 5, game only: mood back to the start values and not fainted; the brain keeps running |
 
 Any other type gets an `error`.
 
@@ -115,7 +118,8 @@ Any other type gets an `error`.
    "bitter": {"group": "bitter_grn", "rate_hz": 150.0}
   },
   "light_is_brain_input": false,
-  "eating": {"group": "mn9_primary", "threshold_hz": 20.0, "window_ms": 500.0}
+  "eating": {"group": "mn9_primary", "threshold_hz": 20.0, "window_ms": 500.0},
+  "game_rules": {"start_hunger": 0.5, "hunger_rise_per_s": 0.004167, "dark_below": 0.15, "...": "every GameRules field"}
  },
  "game": { "...": "same object as in tick.game" }
 }
@@ -139,6 +143,7 @@ Any other type gets an `error`.
 {"type": "ack", "event": "light", "level": 0.2, "t_ms": 1050.0}
 {"type": "ack", "event": "stop", "stimulus": "all", "t_ms": 9050.0}
 {"type": "ack", "event": "reset_brain"}
+{"type": "ack", "event": "revive"}
 ```
 
 ### `error`: an event was rejected (the connection stays open)
@@ -171,14 +176,17 @@ One tick covers one window of whole chunks: 50 ms at 20 Hz, or 100 ms if
  "n_spiking": 248,
  "spiking_ids": ["720575940605658033", "720575940606607234", "720575940606866377", "..."],
  "spiking_ids_truncated": false,
- "inputs_hz": {"sugar": 150.0, "bitter": 0.0},
+ "inputs_hz": {"sugar": 90.0, "bitter": 0.0},
  "game": {
   "stimuli_remaining_ms": {"sugar": 1900.0, "bitter": 0.0},
   "light": 1.0,
+  "dark": false,
   "mn9_rate_hz": 50.0,
   "eating": true,
-  "mood": {"hunger": 0.5, "happiness": 0.5, "energy": 1.0},
-  "mood_rules_active": false
+  "mood": {"hunger": 0.5, "happiness": 0.7, "energy": 1.0},
+  "mood_rules_active": true,
+  "fainted": false,
+  "starving_s": 0.0
  },
  "perf": {"compute_ms": 15.5, "lag_ms": 0.0}
 }
@@ -195,12 +203,16 @@ One tick covers one window of whole chunks: 50 ms at 20 Hz, or 100 ms if
 | `n_spiking` | Number of distinct neurons that spiked |
 | `spiking_ids` | Those neurons, randomly sampled down to `max_spike_ids` (500) when there are more; for the 3D view |
 | `spiking_ids_truncated` | `true` if the sample was cut |
-| `inputs_hz` | Poisson input rate per stimulus during the window |
+| `inputs_hz` | Poisson input rate per stimulus during the window. Phase 5: sugar = 150 Hz × (0.2 + 0.8 × hunger) when `hunger_scales_sugar` is on |
 | `game.stimuli_remaining_ms` | Simulated ms left for each stimulus |
 | `game.light` | Last light level from the phone (game-only) |
 | `game.mn9_rate_hz` | Rate of `mn9_primary` averaged over the last 500 ms (`eating_window_ms`) |
 | `game.eating` | `mn9_rate_hz >= 20` (`eating_threshold_hz`, the same threshold as the Phase 1 sugar test); a readout only |
-| `game.mood` | Placeholder values; Phase 5 adds rules |
+| `game.dark` | `light < game_rules.dark_below` (0.15); the one dark threshold for server, phone and dashboard |
+| `game.mood` | `hunger`, `happiness`, `energy` in [0, 1] from the Phase 5 rules |
+| `game.mood_rules_active` | `true` since Phase 5 |
+| `game.fainted` | Starved (hunger 1.0) for `faint_after_s`; mood frozen until `revive` or `reset_brain` |
+| `game.starving_s` | Seconds at hunger 1.0 so far (0 below it) |
 | `perf.compute_ms` | Mean wall time to simulate one 50 ms chunk in this window |
 | `perf.lag_ms` | How far the loop is behind real time |
 
@@ -214,8 +226,11 @@ One tick covers one window of whole chunks: 50 ms at 20 Hz, or 100 ms if
  "light": 1.0,
  "mn9_rate_hz": 70.0,
  "eating": true,
- "mood": {"hunger": 0.5, "happiness": 0.5, "energy": 1.0},
- "mood_rules_active": false
+ "dark": false,
+ "mood": {"hunger": 0.5, "happiness": 0.7, "energy": 1.0},
+ "mood_rules_active": true,
+ "fainted": false,
+ "starving_s": 0.0
 }
 ```
 

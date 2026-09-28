@@ -3,11 +3,14 @@
 // neuron spikes, resting = game-only light). Nothing here decides what the fly does.
 
 /** Target pose per fly state. Units: radians, scene units (1 mm = CONFIG.fly3d.unitsPerMm). */
+// `faint` (Phase 5): 1 = the fly lies on its back with its legs curled (the game rule
+// "fainted": starving for too long). Only the flybody fly (fly_model3d.js) draws it.
 export const POSES = {
-  idle:      { proboscis: 0.0, headPitch: 0.0,  bodyX: 0.0,   bodyY: 0.0,   wingSpread: 0.10, buzz: 0, light: 1.0,  eyeGlow: 0.0, antennaDroop: 0 },
-  eating:    { proboscis: 1.0, headPitch: 0.30, bodyX: 0.08,  bodyY: -0.05, wingSpread: 0.08, buzz: 0, light: 1.0,  eyeGlow: 0.0, antennaDroop: 0 },
-  disgusted: { proboscis: 0.0, headPitch: -0.28, bodyX: -0.22, bodyY: 0.04, wingSpread: 0.38, buzz: 1, light: 1.0,  eyeGlow: 0.0, antennaDroop: 0 },
-  resting:   { proboscis: 0.0, headPitch: 0.18, bodyX: 0.0,   bodyY: -0.12, wingSpread: 0.0,  buzz: 0, light: 0.18, eyeGlow: 1.0, antennaDroop: 1 },
+  idle:      { proboscis: 0.0, headPitch: 0.0,  bodyX: 0.0,   bodyY: 0.0,   wingSpread: 0.10, buzz: 0, light: 1.0,  eyeGlow: 0.0, antennaDroop: 0, faint: 0 },
+  eating:    { proboscis: 1.0, headPitch: 0.30, bodyX: 0.08,  bodyY: -0.05, wingSpread: 0.08, buzz: 0, light: 1.0,  eyeGlow: 0.0, antennaDroop: 0, faint: 0 },
+  disgusted: { proboscis: 0.0, headPitch: -0.28, bodyX: -0.22, bodyY: 0.04, wingSpread: 0.38, buzz: 1, light: 1.0,  eyeGlow: 0.0, antennaDroop: 0, faint: 0 },
+  resting:   { proboscis: 0.0, headPitch: 0.18, bodyX: 0.0,   bodyY: -0.12, wingSpread: 0.0,  buzz: 0, light: 0.18, eyeGlow: 1.0, antennaDroop: 1, faint: 0 },
+  fainted:   { proboscis: 0.0, headPitch: 0.0,  bodyX: 0.0,   bodyY: 0.0,   wingSpread: 0.0,  buzz: 0, light: 0.8,  eyeGlow: 0.0, antennaDroop: 1, faint: 1 },
 };
 
 /** Exponential approach of `cur` to `target` with time constant `tau` (seconds). */

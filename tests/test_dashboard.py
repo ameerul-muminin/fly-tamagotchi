@@ -85,7 +85,8 @@ def test_replay_app_serves_positions_for_the_recorded_brain():
 # ---------------------------------------------------- sample vs MESSAGE_FORMAT
 TICK_KEYS = {"type", "seq", "t_ms", "window_ms", "server_time_ms", "group_counts", "group_rates_hz",
              "total_spikes", "n_spiking", "spiking_ids", "spiking_ids_truncated", "inputs_hz", "game", "perf"}
-GAME_KEYS = {"stimuli_remaining_ms", "light", "mn9_rate_hz", "eating", "mood", "mood_rules_active"}
+GAME_KEYS = {"stimuli_remaining_ms", "light", "mn9_rate_hz", "eating", "mood", "mood_rules_active",
+             "dark", "fainted", "starving_s"}  # last three: Phase 5
 
 
 def test_recorded_sample_follows_the_message_format():

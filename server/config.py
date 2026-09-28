@@ -1,4 +1,4 @@
-"""All tunable server values (Phase 2; phone page values added in Phase 3). Brain/model values live in brain/config.py.
+"""All tunable server values (Phase 2; phone page Phase 3; game rules Phase 5). Brain/model values live in brain/config.py.
 
 Game values here are project choices, not values from the paper.
 """
@@ -9,6 +9,50 @@ import os
 from dataclasses import dataclass, field
 
 from brain.config import CHUNK_MS, DEFAULT_INPUT_RATE_HZ, NoiseParams
+
+
+@dataclass(frozen=True)
+class GameRules:
+    """Phase 5 game rules (server/game.py). Project choices, not values from a paper.
+
+    Rules read brain outputs (the MN9 eating readout, bitter-neuron spikes), time and the
+    phone's light level. They never decide whether the fly eats. The one game -> brain link
+    is `hunger_scales_sugar`: hunger sets how hard the phone's sugar drives the sugar GRNs.
+    """
+
+    # --- start values (also after revive / reset_brain) ---
+    start_hunger: float = 0.5
+    start_happiness: float = 0.7
+    start_energy: float = 1.0
+
+    # --- hunger ---
+    hunger_rise_per_s: float = 1 / 240      # empty to starving in 4 minutes
+    hunger_eat_per_s: float = 0.05          # while game.eating (MN9 readout) is true
+
+    # --- happiness ---
+    happy_eat_per_s: float = 0.03           # while eating
+    unhappy_bitter_per_s: float = 0.05      # while bitter GRNs fire >= bitter_hz
+    bitter_hz: float = 20.0                 # same as the dashboard's "disgusted" readout
+    starving_at: float = 0.8                # hunger at or above this...
+    unhappy_starving_per_s: float = 0.01    # ...costs this much happiness
+    tired_below: float = 0.3                # energy below this is "tired"...
+    unhappy_light_tired_per_s: float = 0.02 # ...and light while tired costs this much
+
+    # --- energy and light ---
+    dark_below: float = 0.15                # phone light level below this is dark (one
+                                            # value for server, phone page and dashboard)
+    energy_light_per_s: float = -1 / 300    # awake in the light: empty in 5 minutes
+    energy_dark_per_s: float = 1 / 40       # resting in the dark: full in 40 s
+
+    # --- fainting ---
+    faint_after_s: float = 30.0             # this long at hunger 1.0 and the fly faints
+
+    # --- optional game -> brain link (PLAN.md Phase 5, item 5) ---
+    # Sugar input rate = base rate x (min_frac + (1 - min_frac) x hunger). Measured on the
+    # reduced brain (reports/PHASE_5_PLAN.md): MN9 passes 20 Hz between 30 and 50 Hz of
+    # input, so min_frac 0.2 (30 Hz) makes a sated fly's sugar too weak to drive MN9.
+    hunger_scales_sugar: bool = True
+    sugar_min_frac: float = 0.2
 
 
 @dataclass(frozen=True)
@@ -41,7 +85,7 @@ class PhoneConfig:
     camera_height: int = 24
     light_min_change: float = 0.05       # send when the level moves at least this much...
     light_max_interval_ms: float = 2000.0  # ...or at least this often
-    dark_below: float = 0.15             # the page labels levels below this "dark"
+    dark_below: float = GameRules.dark_below  # the page labels levels below this "dark"
 
     # --- feedback ---
     vibrate_pattern_ms: tuple[int, ...] = (80, 60, 80)  # on each eating onset
@@ -88,9 +132,8 @@ class ServerConfig:
     eating_group: str = "mn9_primary"    # the Phase 1 readout neuron
     eating_window_ms: float = 500.0      # MN9 rate is averaged over this window
     eating_threshold_hz: float = 20.0    # same as Phase 1 `min_sugar_mn9_hz`
-    # Placeholder mood values, sent unchanged until the Phase 5 rules exist.
-    initial_mood: dict[str, float] = field(default_factory=lambda: {
-        "hunger": 0.5, "happiness": 0.5, "energy": 1.0})
+    # --- Phase 5 game rules ---
+    game: GameRules = GameRules()
 
     # --- network ---
     host: str = "0.0.0.0"
@@ -144,3 +187,28 @@ class DashboardChecks:
 
 
 DASHBOARD_CHECKS = DashboardChecks()
+
+
+@dataclass(frozen=True)
+class GameChecks:
+    """Pass/fail thresholds for `python -m server.validate_game`, fixed in
+    reports/PHASE_5_PLAN.md before the first validation run."""
+
+    seeds: tuple[int, ...] = (0, 1, 2, 3, 4)
+    hungry_start: float = 0.9
+    eat_run_s: float = 60.0                  # continuous sugar
+    min_drop_first_20s: float = 0.3          # G2
+    tail_s: float = 20.0                     # G3/G4 look at the last this many seconds
+    max_tail_eating_frac: float = 0.25       # G3 (scaling on)
+    satiety_hunger_range: tuple[float, float] = (0.03, 0.35)  # G3
+    min_tail_eating_frac_no_scaling: float = 0.75            # G4
+    bitter_s: float = 3.0                    # G5
+    min_happiness_drop: float = 0.1          # G5
+    compare_s: float = 3.0                   # G6: sugar vs sugar+bitter, each this long
+    compare_hunger: float = 0.9
+    dark_s: float = 10.0                     # G7
+    dark_start_energy: float = 0.5
+    min_energy_gain: float = 0.2
+
+
+GAME_CHECKS = GameChecks()

@@ -98,6 +98,24 @@ What's on the page:
   MN9 spikes are deep thumps, sugar neurons bright plucks, bitter neurons a low buzz, the rest
   soft clicks, plus a gulp and a "blech" when eating or disgust starts. A silent brain is silent.
 
+## Game rules (Phase 5)
+
+The mood bars are live. Every value is in `server/config.py` `GameRules`; the rules are in
+`server/game.py`.
+
+- **Hunger** rises with time (empty to starving in 4 min) and falls only while the brain's
+  eating readout is on (MN9 ≥ 20 Hz).
+- **Happiness** rises while eating; bitter-neuron spikes, starving and light while tired cost
+  some.
+- **Energy** drains in the light and refills in the dark (light level below 0.15, one
+  threshold for server, phone and dashboard).
+- **Fainting**: 30 s at 100 % hunger and the fly faints; press **Revive** on the dashboard.
+- **Hunger scales the sugar signal** (150 Hz × (0.2 + 0.8 × hunger)). A full fly's sugar
+  signal is too weak for MN9 to pass the eating line, so it stops eating by itself, through
+  the brain. Turn it off with `hunger_scales_sugar=False`.
+
+Validate on the real brain: `python -m server.validate_game` (5 seeds, about 4 minutes).
+
 ## Data
 
 | What | Source | Version |

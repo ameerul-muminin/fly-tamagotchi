@@ -5,7 +5,9 @@ worker thread. Everything else (events, rate changes, summaries) runs on the
 asyncio event-loop thread, and rates change only between chunks.
 
 Nothing here decides behavior. `eating` is a readout of MN9 spikes, and bitter
-reaches MN9 only through the simulated connectome.
+reaches MN9 only through the simulated connectome. The Phase 5 game rules
+(server/game.py) react to those readouts; their one input to the brain is the sugar
+rate, which hunger scales (GameRules.hunger_scales_sugar).
 """
 
 from __future__ import annotations
@@ -20,6 +22,7 @@ import scipy.sparse as sp
 from brain.config import LIFParams
 from brain.simulator import ChunkResult, LIFSimulator
 from server.config import ServerConfig
+from server.game import GameState, is_dark, revive, rules_info, step, sugar_rate_hz
 
 
 class EventError(ValueError):
@@ -62,7 +65,8 @@ class BrainRunner:
         self._sample_rng = np.random.default_rng([cfg.seed, 1])
         self.stim_until_ms = {s: 0.0 for s in cfg.input_groups}
         self.light = 1.0
-        self.mood = dict(cfg.initial_mood)
+        self.rules = cfg.game
+        self.game = GameState.start(self.rules)
         self.seq = 0
         self.window = Window()
         # (duration_ms, readout spikes) of recent chunks, for the eating readout
@@ -90,6 +94,7 @@ class BrainRunner:
             "eating": {"group": self.cfg.eating_group,
                        "threshold_hz": self.cfg.eating_threshold_hz,
                        "window_ms": self.cfg.eating_window_ms},
+            "game_rules": rules_info(self.rules),
         }
 
     # ---------------------------------------------------------------- events
@@ -126,8 +131,13 @@ class BrainRunner:
             return {"type": "pong", "t": msg.get("t"), "server_time_ms": time.time() * 1000.0}
         raise EventError(f"unknown type {kind!r}")
 
+    def revive(self) -> None:
+        """A fresh fly: mood back to the start values, not fainted (brain untouched)."""
+        self.game = revive(self.rules)
+
     def reset_brain(self) -> None:
-        """Return every neuron to rest and stop all stimuli."""
+        """Return every neuron to rest, stop all stimuli and start a fresh fly."""
+        self.revive()
         self.sim.reset_state()
         self.stim_until_ms = {s: 0.0 for s in self.stim_until_ms}
         self._eat_hist.clear()
@@ -141,6 +151,8 @@ class BrainRunner:
         now = self.sim.t_ms
         for stim, until in self.stim_until_ms.items():
             rate = self.cfg.input_rate_hz[stim] if until > now else 0.0
+            if stim == "sugar" and rate > 0:
+                rate = sugar_rate_hz(rate, self.game.hunger, self.rules)
             if self.sim.rate(stim) != rate:
                 self.sim.set_rate(stim, rate)
         self.effective_t_ms = now + self.cfg.chunk_ms
@@ -166,6 +178,12 @@ class BrainRunner:
             total = sum(d for d, _ in self._eat_hist)
             while total - self._eat_hist[0][0] >= self.cfg.eating_window_ms:
                 total -= self._eat_hist.popleft()[0]
+        # Game rules: react to this chunk's brain readouts.
+        bitter = self.groups.get(self.cfg.input_groups.get("bitter", ""))
+        bitter_hz = (float(counts[bitter].sum()) / bitter.size / (res.duration_ms / 1000.0)
+                     if bitter is not None and bitter.size and res.duration_ms > 0 else 0.0)
+        self.game = step(self.game, res.duration_ms / 1000.0, eating=self.is_eating(),
+                         bitter_hz=bitter_hz, light=self.light, rules=self.rules)
 
     def window_ready(self) -> bool:
         """True once the window spans one dashboard tick period."""
@@ -179,17 +197,24 @@ class BrainRunner:
             return 0.0
         return sum(c for _, c in self._eat_hist) / readout.size / (dur / 1000.0)
 
+    def is_eating(self) -> bool:
+        """The eating readout: mean MN9 rate over the eating window >= threshold."""
+        return self.readout_rate_hz() >= self.cfg.eating_threshold_hz
+
     def game_state(self) -> dict:
-        """Game-facing state: stimuli, light, brain readouts and (placeholder) mood."""
+        """Game-facing state: stimuli, light, brain readouts and the Phase 5 mood."""
         now = self.window_end_ms()
-        mn9 = self.readout_rate_hz()
+        g = self.game
         return {
             "stimuli_remaining_ms": {s: max(0.0, u - now) for s, u in self.stim_until_ms.items()},
             "light": self.light,
-            "mn9_rate_hz": mn9,
-            "eating": mn9 >= self.cfg.eating_threshold_hz,
-            "mood": dict(self.mood),
-            "mood_rules_active": False,
+            "dark": is_dark(self.light, self.rules),
+            "mn9_rate_hz": self.readout_rate_hz(),
+            "eating": self.is_eating(),
+            "mood": g.mood(),
+            "mood_rules_active": True,
+            "fainted": g.fainted,
+            "starving_s": g.starving_s,
         }
 
     def make_tick(self, lag_ms: float = 0.0) -> dict:

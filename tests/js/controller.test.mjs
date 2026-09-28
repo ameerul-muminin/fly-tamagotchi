@@ -134,6 +134,11 @@ test("status view is display only", () => {
   assert.equal(v.moodPlaceholder, true);
   assert.equal(v.hunger, 0.5);
   assert.equal(statusView(status(true, { mood_rules_active: true })).moodPlaceholder, false);
+  // Phase 5: the server's dark flag wins over the local threshold; fainted is passed on.
+  assert.equal(statusView(status(false, { light: 0.05, dark: false })).dark, false);
+  assert.equal(statusView(status(false, { light: 0.9, dark: true })).dark, true);
+  assert.equal(statusView(status(false, { fainted: true })).fainted, true);
+  assert.equal(statusView(status(false)).fainted, false);
 });
 
 test("pong gives round-trip time; errors are kept", () => {

@@ -78,10 +78,12 @@ function render(ctl) {
   $("stims").textContent = stims.length ? stims.join(" + ") : "no taste";
   let line = "Not eating";
   let mood = "idle";
-  if (v.eating) { line = "Eating!"; mood = "eating"; }
+  if (v.fainted) { line = "Fainted! Revive it on the laptop"; mood = "fainted"; }
+  else if (v.eating) { line = "Eating!"; mood = "eating"; }
   else if (v.sugarLeftMs > 0 && v.bitterLeftMs > 0) line = "Tastes bitter… not eating";
   else if (v.bitterLeftMs > 0) line = "Yuck, bitter";
   else if (v.dark) { line = "Resting in the dark"; mood = "dark"; }
+  else if (v.hunger != null && v.hunger >= 0.8) line = "Hungry! Tap for sugar";
   $("fly-line").textContent = line;
   $("fly-face").dataset.mood = mood;
   const rtt = ctl.state.rttMs;

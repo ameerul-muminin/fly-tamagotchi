@@ -304,6 +304,20 @@ main {
 .fly-viewer[data-state="resting"] { --state: #7aa2ff; --state-ink: #c4d4ff; }
 .fly-viewer[data-state="idle"] { --state: #c4c9d2; }
 .gulps b { color: var(--ink); font-weight: 600; }
+.fly-viewer[data-state="fainted"] { --state: #ff8a73; --state-ink: #ffc2b5; }
+.fly-viewer[data-state="fainted"] .backdrop { opacity: 0.6; }
+.revive-btn {
+  position: absolute; z-index: 3; left: 50%; bottom: 44px; translate: -50% 0;
+  height: 40px; padding: 0 20px; font-size: 14px;
+  background: #ff8a73; color: #2a0f08;
+  box-shadow: 0 0 0 1px rgba(255, 138, 115, 0.6), 0 8px 24px rgba(255, 138, 115, 0.3);
+  transition-property: scale, opacity;
+  @starting-style { opacity: 0; scale: 0.95; }
+}
+@media (hover: hover) and (pointer: fine) {
+  .revive-btn:hover { background: #ff9d89; box-shadow: 0 0 0 1px rgba(255, 138, 115, 0.8), 0 8px 24px rgba(255, 138, 115, 0.35); }
+}
+svg.fly.is-fainted { transform: rotate(180deg); transform-origin: 50% 60%; filter: grayscale(0.5); }
 
 .tabs { position: relative; display: flex; gap: 2px; }
 .tabs button {

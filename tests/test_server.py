@@ -185,8 +185,11 @@ def test_phone_receives_status():
     with toy_client() as c, c.websocket_connect("/ws/phone") as phone:
         phone.receive_json()
         s = next_of(phone, "status")
-        assert {"eating", "mn9_rate_hz", "mood", "light", "stimuli_remaining_ms"} <= s.keys()
-        assert s["mood_rules_active"] is False
+        assert {"eating", "mn9_rate_hz", "mood", "light", "stimuli_remaining_ms",
+                "dark", "fainted", "starving_s"} <= s.keys()
+        # Phase 5: the game rules are live (was a placeholder, False, until then).
+        assert s["mood_rules_active"] is True
+        assert set(s["mood"]) == {"hunger", "happiness", "energy"}
 
 
 def test_slow_client_drops_oldest_messages():

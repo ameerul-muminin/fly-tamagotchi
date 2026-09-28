@@ -4,13 +4,15 @@
 
 export const CONFIG = {
   // --- fly face/body state (display readout, first match wins) ---
+  // fainted:   tick.game.fainted (Phase 5 game rule: starving too long)
   // eating:    tick.game.eating (server: mn9_primary >= 20 Hz over 500 ms)
   // disgusted: bitter GRNs spiking at >= disgustBitterHz in this tick (brain activity)
-  // resting:   tick.game.light <= darkLevel (light is game-only, not a brain input)
+  // resting:   tick.game.dark (the server's one dark threshold; light is game-only,
+  //            not a brain input). Recordings without it: light <= darkLevel.
   // idle:      none of the above
-  statePriority: ["eating", "disgusted", "resting", "idle"],
+  statePriority: ["fainted", "eating", "disgusted", "resting", "idle"],
   disgustBitterHz: 20,
-  darkLevel: 0.3,
+  darkLevel: 0.15,
   // A new state must hold for this long before the fly changes (stops flicker).
   stateHoldMs: 150,
 

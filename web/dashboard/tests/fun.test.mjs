@@ -20,7 +20,7 @@ const F = CONFIG.fly3d;
 // ------------------------------------------------------------------ fly motion
 test("every fly state has a pose with the same keys", () => {
   const keys = Object.keys(POSES.idle).sort();
-  for (const s of ["idle", "eating", "disgusted", "resting"]) {
+  for (const s of ["idle", "eating", "disgusted", "resting", "fainted"]) {
     assert.deepEqual(Object.keys(POSES[s]).sort(), keys, s);
   }
 });

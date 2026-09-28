@@ -88,6 +88,9 @@ p { margin: 0; }
 .face[data-mood="dark"] { --state: #7aa2ff; filter: brightness(0.75); }
 .face[data-mood="dark"] .eye { height: 3px; top: 19px; background: #3a1a0c; }
 @keyframes chew { to { height: 4px; } }
+.face[data-mood="fainted"] { --state: var(--bad); filter: grayscale(0.6) brightness(0.8); }
+.face[data-mood="fainted"] .eye { height: 3px; top: 19px; background: #3a1a0c; }
+.face[data-mood="fainted"] .mouth { width: 12px; height: 2px; }
 
 /* ---------- mood ---------- */
 .moods { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; padding: 0 2px; }

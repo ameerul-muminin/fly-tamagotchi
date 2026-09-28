@@ -212,8 +212,12 @@ def _reply(live: LiveBrain, role: str, text: str) -> dict:
             if kind == "reset_brain":
                 live.request_reset()
                 return {"type": "ack", "event": "reset_brain"}
+            if kind == "revive":
+                # Game only (Phase 5): a fresh fly; the brain keeps running.
+                live.runner.revive()
+                return {"type": "ack", "event": "revive"}
             if kind != "ping":
-                raise EventError("dashboard accepts only 'ping' and 'reset_brain'")
+                raise EventError("dashboard accepts only 'ping', 'reset_brain' and 'revive'")
         return live.runner.handle_event(msg)
     except EventError as e:
         return {"type": "error", "error": str(e), "received": msg}

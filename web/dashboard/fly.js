@@ -38,7 +38,7 @@ const SVG = `
     <text class="z3" x="280" y="42">Z</text></g>
 </svg>`;
 
-export const FLY_STATES = ["idle", "eating", "disgusted", "resting"];
+export const FLY_STATES = ["idle", "eating", "disgusted", "resting", "fainted"];
 
 /** Put a fly in `container`; returns {setState(state, {sugar, bitter}), render()}. */
 export function createFly(container) {

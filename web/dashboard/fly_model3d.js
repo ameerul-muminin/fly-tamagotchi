@@ -38,6 +38,7 @@ const MATERIALS = {
 // front legs raised to the head for grooming.
 const PROBOSCIS = { rostrum: [0.8, -0.8], haustellum: [0.8, -1.2] };
 const GROOM_T1 = { coxa: 1.4, femur: 1.6, tibia: -1.0 };
+const FAINT_LEG = { femur: 1.3, tibia: -1.2 };   // legs curled in (fainted)
 const SIDES = ["left", "right"];
 const ease = cubicBezier(0.77, 0, 0.175, 1);   // on-screen movement (emil-design-eng)
 
@@ -194,6 +195,14 @@ export class FlyModel3D {
     }
     this.abdomenNode = this.nodes.get("abdomen");
 
+    // Height of the body origin when lying on its back (fainted), measured once.
+    this.poseJoints({ ...POSES.fainted }, 0, 0);
+    this.fly.rotation.x = Math.PI;
+    this.fly.position.y = 0;
+    this.scene.updateMatrixWorld(true);
+    this.faintY = -new THREE.Box3().setFromObject(model).min.y;
+    this.fly.rotation.x = 0;
+
     // Where the labellum touches down with the proboscis out: the food drop goes there.
     this.poseJoints({ ...POSES.eating }, 0, 0);
     this.scene.updateMatrixWorld(true);
@@ -289,8 +298,20 @@ export class FlyModel3D {
       }
     }
 
+    // Fainted: every leg curls in.
+    if (p.faint > 0.001) {
+      for (const s of SIDES) {
+        for (const leg of ["T1", "T2", "T3"]) {
+          const f = this.joints.get(`femur_${leg}_${s}`);
+          const tb = this.joints.get(`tibia_${leg}_${s}`);
+          if (f) f.angle += (FAINT_LEG.femur - f.angle) * p.faint;
+          if (tb) tb.angle += (FAINT_LEG.tibia - tb.angle) * p.faint;
+        }
+      }
+    }
+
     // Abdomen: breathing, and a slight sag while resting.
-    const breath = Math.sin(t * Math.PI * 2 * (this.state === "resting" ? 0.25 : 0.55));
+    const breath = this.state === "fainted" ? 0 : Math.sin(t * Math.PI * 2 * (this.state === "resting" ? 0.25 : 0.55));
     for (let n = 1; n <= 7; n++) {
       this.setJoint(n === 1 ? "abdomen" : `abdomen_${n}`, 0.012 * breath + 0.015 * p.antennaDroop);
     }
@@ -369,7 +390,8 @@ export class FlyModel3D {
 
     // Body: lean toward the food while eating, rear back when disgusted, sink a touch
     // when resting. Belly swells with eating time (a drawing of MN9-driven eating).
-    this.fly.position.set(0.25 * p.bodyX, this.standY + 0.25 * p.bodyY, 0);
+    this.fly.position.set(0.25 * p.bodyX, this.standY + 0.25 * p.bodyY + (this.faintY - this.standY) * p.faint, 0);
+    this.fly.rotation.x = Math.PI * p.faint;   // rolls onto its back
     this.fullness = nextFullness(this.fullness, this.state === "eating", dt, c);
     if (this.abdomenNode) this.abdomenNode.scale.setScalar(1 + 0.07 * this.fullness);
 

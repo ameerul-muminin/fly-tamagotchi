@@ -292,7 +292,7 @@ function updateScaleBar() {
   }
 }
 
-const STATE_WORD = { eating: "Eating", disgusted: "Disgusted", resting: "Resting", idle: "Idle" };
+const STATE_WORD = { fainted: "Fainted", eating: "Eating", disgusted: "Disgusted", resting: "Resting", idle: "Idle" };
 
 // Meter readouts, smoothed a little so a 50 ms tick doesn't flicker.
 const meters = { sugar_grn: 0, bitter_grn: 0, mn9_primary: 0, seq: null };
@@ -324,8 +324,19 @@ function whyText(tick, r) {
   const hz = (x) => `${Math.round(x)} Hz`;
   const sugarOn = tick.inputs_hz.sugar > 0;
   const bitterOn = tick.inputs_hz.bitter > 0;
+  const rules = state.brain?.game_rules;
+  const fullSugar = state.brain?.stimuli?.sugar?.rate_hz;
+  // Hunger scales the sugar drive (the one game -> brain link, Phase 5).
+  const scaled = rules?.hunger_scales_sugar && sugarOn && fullSugar && tick.inputs_hz.sugar < 0.99 * fullSugar;
   let s;
-  if (tick.game.eating) {
+  if (tick.game.fainted) {
+    return `The fly fainted: it was starving (hunger at 100%) for ${rules?.faint_after_s ?? 30} s. ` +
+      "Press Revive. Fainting is a game rule, not the connectome.";
+  }
+  if (!tick.game.eating && scaled && !bitterOn) {
+    s = `The fly is full. Hunger sets the sugar signal to ${hz(tick.inputs_hz.sugar)} (of ${hz(fullSugar)}), ` +
+      `too weak to drive MN9 over ${line} (MN9 ${hz(r.mn9_primary)}). No "full" rule: the brain just doesn't respond.`;
+  } else if (tick.game.eating) {
     s = `Sugar neurons fire at ${hz(r.sugar_grn)} and drive MN9 to ${hz(r.mn9_primary)}, above ${line}. The fly eats.`;
   } else if (sugarOn && bitterOn) {
     s = `Sugar and bitter neurons both fire. MN9 only reaches ${hz(r.mn9_primary)}, below ${line}, so the fly doesn't eat. ` +
@@ -337,7 +348,7 @@ function whyText(tick, r) {
   } else {
     s = "No taste input, so the taste neurons are quiet. Tap the phone to give sugar, or shake it for bitter.";
   }
-  if (tick.game.light <= CONFIG.darkLevel) {
+  if (tick.game.dark ?? tick.game.light <= CONFIG.darkLevel) {
     s += " It's dark, so the fly rests. That part is a game rule: light isn't wired into this brain.";
   }
   return s;
@@ -353,6 +364,8 @@ function caption(s, tick) {
         (g.mn9_rate_hz > 0 ? ` · MN9 ${g.mn9_rate_hz.toFixed(0)} Hz` : " · MN9 silent");
     case "resting":
       return `Resting in the dark · light ${Math.round(g.light * 100)}%`;
+    case "fainted":
+      return "Starved too long · press Revive";
     default:
       return "No taste input";
   }
@@ -379,15 +392,29 @@ function updateDom() {
         bar.querySelector("output").textContent = pct;
       }
     }
-    setText("#mood-note", game.mood_rules_active
-      ? "Mood rules are on."
-      : "Placeholder values: the mood rules arrive in Phase 5.");
+    setText("#mood-note", !game.mood_rules_active
+      ? "Placeholder values: this server has no mood rules."
+      : game.fainted ? "Fainted. Press Revive on the fly."
+        : game.starving_s > 0
+          ? `Starving: faints in ${Math.max(0, Math.ceil((state.brain?.game_rules?.faint_after_s ?? 30) - game.starving_s))} s unless it eats.`
+          : "Hunger rises with time and falls only while MN9 says eating. Bitter-neuron spikes cost happiness; the dark restores energy.");
   }
   if (!tick) return;
   fly.setState(state.flyState, { sugar: tick.inputs_hz.sugar > 0, bitter: tick.inputs_hz.bitter > 0 },
     { mn9Hz: tick.game.mn9_rate_hz });
   const stage = $("#stage");
   if (stage.dataset.state !== state.flyState) stage.dataset.state = state.flyState;
+  $("#revive").hidden = state.flyState !== "fainted";
+  // Eating and disgust come from spikes; fainting and resting in the dark are game rules.
+  const byRule = state.flyState === "fainted" || state.flyState === "resting";
+  const tag = $("#state-tag");
+  if (tag.dataset.rule !== String(byRule)) {
+    tag.dataset.rule = String(byRule);
+    tag.textContent = byRule ? "game rule" : "brain decides";
+    tag.className = `tag ${byRule ? "game" : "brain"}`;
+    tag.title = byRule ? "Fainting (starving too long) and resting in the dark are game rules"
+      : "Eating is MN9 spikes; disgust is bitter-neuron spikes";
+  }
   setText("#fly-state-word", STATE_WORD[state.flyState] ?? "Idle");
   setText("#fly-caption", caption(state.flyState, tick));
   setText("#gulps", String(state.gulps));
@@ -462,6 +489,8 @@ $("#sound").addEventListener("click", async () => {
   $("#sound").setAttribute("aria-pressed", String(sound.on));
   setText("#sound-label", sound.on ? "Listening" : "Hear the brain");
 });
+
+$("#revive").addEventListener("click", () => source.send({ type: "revive" }));
 
 $("#reset").addEventListener("click", () => {
   source.send({ type: "reset_brain" });

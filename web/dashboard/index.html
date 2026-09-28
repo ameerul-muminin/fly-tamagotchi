@@ -78,7 +78,7 @@
         <div class="hud hud-tl">
           <p class="status" id="fly-status">
             <i class="dot" aria-hidden="true"></i><span id="fly-state-word">Waiting</span>
-            <span class="tag brain" title="Eating is MN9 spikes; disgust is bitter-neuron spikes">brain decides</span>
+            <span class="tag brain" id="state-tag" title="Eating is MN9 spikes; disgust is bitter-neuron spikes">brain decides</span>
           </p>
           <p id="fly-caption" class="hud-sub">Waiting for the brain…</p>
           <p class="hud-sub gulps" title="Times the brain started eating this session (MN9 crossed the eating line)">
@@ -92,6 +92,8 @@
             <span class="tab-line" aria-hidden="true"></span>
           </div>
         </div>
+        <button id="revive" type="button" class="btn revive-btn" hidden
+                title="Game rule: a fresh fly (mood back to the start values); the brain keeps running">Revive</button>
         <p class="hud hud-bl species"><i>Drosophila melanogaster</i></p>
         <div class="hud hud-br scale" id="scale" hidden>
           <span class="scale-line" id="scale-line"></span><span>1 mm</span>
