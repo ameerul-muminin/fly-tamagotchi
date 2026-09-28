@@ -1,9 +1,11 @@
 # Phase 3 Report: iPhone Controller Page
 
-**Status: built and tested up to the browser boundary. NOT yet tested on a real iPhone.**
+**Status: done. Real-iPhone test passed (2026-09-28, run by the user, see below).**
 
 PLAN.md's done-criterion for Phase 3 is "all three inputs work on a real iPhone over HTTPS".
-I have no iPhone, so that step is still open. Everything short of it passes:
+The user ran it on their iPhone over HTTPS and reported: "everything from iphone works"
+(tap, shake and camera). This is a user report; no numbers were logged from the phone.
+Before that, everything short of the phone passed:
 
 - **Unit tests:** 16 Node tests of the phone logic with mock sensor data.
 - **Mock-event end-to-end check:** the real phone logic runs in Node against the live
@@ -258,7 +260,7 @@ to MN9.
 
 ## Open problems
 
-1. **No real-iPhone test yet (the PLAN.md done-criterion).** Manual steps:
+1. **Real-iPhone test: passed** (user report, 2026-09-28). The steps used were:
    1. On the laptop, run `python -m server`, then `ngrok http 8000` in a second terminal,
       then open `http://localhost:8000/`. The QR code should show the `https://…ngrok…`
       URL.
@@ -272,7 +274,7 @@ to MN9.
    6. Cover the front camera. The light card should show "dark 0.0x" and the dashboard's
       light value should drop.
    7. Check whether the phone buzzes on an eating onset (iOS 18+ switch haptic; see 2).
-2. **Vibration on iPhone is unverified.** Nobody documents whether the switch-haptic
+2. **Vibration on iPhone was not reported separately** (the user said everything works). Nobody documents whether the switch-haptic
    workaround fires outside a user gesture. The eating onset arrives from the network,
    not from a tap, so iOS may block it and leave only the screen flash.
 3. **Camera auto-exposure.** Phones adjust exposure to the room, so a dim room may still
