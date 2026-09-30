@@ -5,3 +5,4 @@ __pycache__/
 *.part
 certs/
 reports/guide/guide_built.html
+.claude/

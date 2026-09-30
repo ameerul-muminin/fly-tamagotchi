@@ -212,6 +212,10 @@ async def live_check(cdp: Cdp) -> dict:
                    " d.state.statesSeen.clear(); d.perf.jsErrors.length = 0; return true; })()")
     await drive_phone(f"ws://127.0.0.1:{LIVE_PORT}", c.live_seconds)
     snap = await cdp.snapshot()
+    # The phone panel shows this machine's address (LAN IP or ngrok tunnel) and its QR
+    # code; keep them out of screenshots that get committed.
+    await cdp.eval("(() => { const p = document.querySelector('#phone-panel');"
+                   " if (p) p.style.visibility = 'hidden'; return true; })()")
     await cdp.screenshot(SHOTS_DIR / "live.png")
 
     # Reset button: the server acks and the page clears; t_ms restarts near 0.
