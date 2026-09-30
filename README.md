@@ -170,6 +170,12 @@ explains the science and every part of the code.
   converted on your machine; not included in this repository.
 - **3D graphics:** [three.js](https://threejs.org).
 
+## License
+
+The code in this repository is under the [MIT License](LICENSE). The data it downloads
+(FlyWire connectome, the Shiu et al. model files, the flybody fly) keeps its own license
+and is not included here.
+
 ---
 
 ## For developers
